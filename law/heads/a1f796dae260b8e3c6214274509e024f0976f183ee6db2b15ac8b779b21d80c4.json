@@ -1,0 +1,72 @@
+{
+  "model_path": "/mnt/data/models/granite-3.3-8b-Q4_K_M.gguf",
+  "sha256": "a1f796dae260b8e3c6214274509e024f0976f183ee6db2b15ac8b779b21d80c4",
+  "heads": [
+    [
+      0,
+      26
+    ],
+    [
+      17,
+      6
+    ],
+    [
+      17,
+      7
+    ],
+    [
+      17,
+      20
+    ],
+    [
+      21,
+      17
+    ],
+    [
+      34,
+      13
+    ],
+    [
+      35,
+      16
+    ],
+    [
+      35,
+      20
+    ],
+    [
+      36,
+      1
+    ],
+    [
+      36,
+      3
+    ],
+    [
+      36,
+      23
+    ],
+    [
+      37,
+      10
+    ],
+    [
+      37,
+      31
+    ],
+    [
+      38,
+      14
+    ],
+    [
+      39,
+      28
+    ],
+    [
+      39,
+      31
+    ]
+  ],
+  "method": "niah-copy-score nightdessert/Retrieval_Head adapted; eager attention last-query argmax onto needle span; threshold 1.0; trials 2; ctx 128; measured on HF /mnt/data/models/granite-3.3-8b-hf",
+  "date": "2026-08-20"
+}

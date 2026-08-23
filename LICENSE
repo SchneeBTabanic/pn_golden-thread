@@ -1,0 +1,10 @@
+This runtime is part of Project Namirha.
+Sovereign author: Schnee Bashtabanic.
+
+The arithmetic / echo / quantities / scan checks were first written in the
+plain-witness / clause-runtime trees (2026-08-14). They sit in checks/ and
+are not called. The sovereign aborted that environment before evaluating
+it. They are not the parent of this runtime. Wiring them is a gate.
+
+Licensed under the GNU Affero General Public License v3 (AGPL-3.0),
+the same licence as scribe-workbench in this working copy.

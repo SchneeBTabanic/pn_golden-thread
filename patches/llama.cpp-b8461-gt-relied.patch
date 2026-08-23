@@ -1,0 +1,355 @@
+diff --git a/tools/server/CMakeLists.txt b/tools/server/CMakeLists.txt
+index 5621a51b..455efd1e 100644
+--- a/tools/server/CMakeLists.txt
++++ b/tools/server/CMakeLists.txt
+@@ -13,6 +13,8 @@ add_library(${TARGET} STATIC
+     server-common.h
+     server-context.cpp
+     server-context.h
++    gt-relied.cpp
++    gt-relied.h
+ )
+ 
+ if (BUILD_SHARED_LIBS)
+diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
+index 9de554e9..2f389906 100644
+--- a/tools/server/server-context.cpp
++++ b/tools/server/server-context.cpp
+@@ -11,9 +11,11 @@
+ #include "speculative.h"
+ #include "mtmd.h"
+ #include "mtmd-helper.h"
++#include "gt-relied.h"
+ 
+ #include <algorithm>
+ #include <cstddef>
++#include <cstring>
+ #include <cinttypes>
+ #include <exception>
+ #include <memory>
+@@ -149,6 +151,8 @@ struct server_slot {
+     llama_token  sampled; // in speculative mode, this is the last accepted token
+     llama_tokens drafted;
+ 
++    bool gt_dial_applied = false;
++
+     // stats
+     size_t n_sent_text = 0; // number of sent text character
+ 
+@@ -194,6 +198,7 @@ struct server_slot {
+ 
+         // clear alora start
+         alora_invocation_start = -1;
++        gt_dial_applied = false;
+     }
+ 
+     void init_sampler() const {
+@@ -627,6 +632,8 @@ private:
+         SRV_INF("loading model '%s'\n", params.model.path.c_str());
+ 
+         params_base = params;
++        params_base.cb_eval = gt_relied_cb;
++        params_base.cb_eval_user_data = nullptr;
+ 
+         llama_init = common_init_from_params(params_base);
+ 
+@@ -1187,6 +1194,24 @@ private:
+ 
+         slot.task = std::make_unique<const server_task>(std::move(task));
+ 
++        if (slot.task->params.gt_relied_on) {
++            std::vector<gt_relied_span> spans;
++            for (const auto & s : slot.task->params.gt_spans) {
++                spans.push_back({s.id, s.start, s.end});
++            }
++            gt_relied_arm(slot.task->params.gt_heads, spans);
++        }
++        if (slot.task->params.gt_press_on) {
++            std::vector<gt_relied_span> spans;
++            for (const auto & s : slot.task->params.gt_press_spans) {
++                spans.push_back({s.id, s.start, s.end});
++            }
++            gt_press_arm(
++                slot.task->params.gt_press_heads, spans,
++                slot.task->params.gt_press_strength,
++                slot.task->params.gt_press_n_prompt);
++        }
++
+         slot.state = slot.task->is_child()
+             ? SLOT_STATE_WAIT_OTHER // wait for the parent to process prompt
+             : SLOT_STATE_STARTED;
+@@ -1515,6 +1540,22 @@ private:
+ 
+         res->generation_params = slot.task->params; // copy the parameters
+ 
++        if (slot.task->params.gt_relied_on) {
++            const auto snap = gt_relied_take();
++            res->gt_relied = snap.fractions;
++            res->gt_relied_n_steps = snap.n_steps;
++            res->gt_relied_n_heads = snap.n_heads;
++            res->gt_relied_saw_softmax = snap.saw_softmax;
++            gt_relied_disarm();
++        }
++        if (slot.task->params.gt_dial_on) {
++            res->gt_dial_applied = slot.gt_dial_applied;
++        }
++        if (slot.task->params.gt_press_on) {
++            res->gt_press_applied = gt_press_applied();
++            gt_press_disarm();
++        }
++
+         queue_results.send(std::move(res));
+     }
+ 
+@@ -2068,7 +2109,7 @@ private:
+             // generate draft tokens in speculative decoding mode
+             // TODO: rework to have a single draft llama_context shared across all slots [TAG_SERVER_SPEC_REWORK]
+             //       perform the speculative drafting for all sequences at the same time in a single batch
+-            const int n_draft_max = slot.get_n_draft_max();
++            const int n_draft_max = slot.task->params.gt_dial_on ? 0 : slot.get_n_draft_max();
+             if (n_draft_max > 0) {
+                 if (mctx) {
+                     // we should never reach this, as speculative is automatically disabled if mmproj is loaded
+@@ -2706,6 +2747,7 @@ private:
+             };
+ 
+             const int ret = llama_decode(ctx, batch_view);
++            gt_relied_finish_step();
+ 
+             metrics.on_decoded(slots);
+ 
+@@ -2833,7 +2875,59 @@ private:
+ 
+                 const int tok_idx = slot.i_batch - i;
+ 
+-                llama_token id = common_sampler_sample(slot.smpl.get(), ctx, tok_idx);
++                int sample_idx = tok_idx;
++                if (slot.task->params.gt_dial_on && slot.n_decoded > 0) {
++                    float * logits = llama_get_logits_ith(ctx, tok_idx);
++                    const int n_vocab = llama_vocab_n_tokens(vocab);
++                    if (logits && n_vocab > 0) {
++                        std::vector<float> cond(logits, logits + n_vocab);
++                        llama_memory_t mem = llama_get_memory(ctx);
++                        llama_pos p = slot.prompt.tokens.pos_next();
++                        if (p > 0) {
++                            p = p - 1;
++                        }
++                        std::vector<gt_relied_span> dspans;
++                        for (const auto & s : slot.task->params.gt_dial_spans) {
++                            dspans.push_back({s.id, s.start, s.end});
++                        }
++                        gt_relied_pause();
++                        gt_dial_mask_arm(dspans);
++                        bool ok = llama_memory_seq_rm(mem, slot.id, p, p + 1);
++                        llama_batch extra = llama_batch_init(1, 0, 1);
++                        extra.n_tokens = 1;
++                        extra.token[0] = slot.sampled;
++                        extra.pos[0] = p;
++                        extra.n_seq_id[0] = 1;
++                        extra.seq_id[0][0] = slot.id;
++                        extra.logits[0] = true;
++                        std::vector<float> uncond;
++                        if (ok && llama_decode(ctx, extra) == 0) {
++                            float * u = llama_get_logits(ctx);
++                            if (u) {
++                                uncond.assign(u, u + n_vocab);
++                            }
++                        }
++                        llama_memory_seq_rm(mem, slot.id, p, p + 1);
++                        gt_dial_mask_disarm();
++                        extra.token[0] = slot.sampled;
++                        extra.pos[0] = p;
++                        extra.logits[0] = true;
++                        llama_decode(ctx, extra);
++                        llama_batch_free(extra);
++                        gt_relied_resume();
++                        float * dest = llama_get_logits(ctx);
++                        if (dest && uncond.size() == (size_t) n_vocab) {
++                            gt_dial_mix_logits(dest, uncond.data(), n_vocab, slot.task->params.gt_dial_alpha);
++                            slot.gt_dial_applied = true;
++                            sample_idx = 0;
++                        } else if (dest) {
++                            memcpy(dest, cond.data(), (size_t) n_vocab * sizeof(float));
++                            sample_idx = 0;
++                        }
++                    }
++                }
++
++                llama_token id = common_sampler_sample(slot.smpl.get(), ctx, sample_idx);
+ 
+                 slot.i_batch = -1;
+ 
+diff --git a/tools/server/server-task.cpp b/tools/server/server-task.cpp
+index 7d543b92..5059358b 100644
+--- a/tools/server/server-task.cpp
++++ b/tools/server/server-task.cpp
+@@ -298,6 +298,97 @@ task_params server_task::params_from_json_cmpl(
+     params.sampling.adaptive_decay     = json_value(data, "adaptive_decay",      defaults.sampling.adaptive_decay);
+     params.sampling.seed               = json_value(data, "seed",                defaults.sampling.seed);
+     params.sampling.n_probs            = json_value(data, "n_probs",             defaults.sampling.n_probs);
++    if (data.contains("gt_relied") && data["gt_relied"].is_object()) {
++        const json & g = data["gt_relied"];
++        if (g.contains("heads") && g["heads"].is_array()) {
++            for (const auto & h : g["heads"]) {
++                if (!h.is_array() || h.size() != 2) {
++                    throw std::runtime_error("gt_relied.heads entries must be [layer, head]");
++                }
++                params.gt_heads.push_back({h.at(0).get<int>(), h.at(1).get<int>()});
++            }
++        }
++        if (g.contains("spans") && g["spans"].is_array()) {
++            for (const auto & s : g["spans"]) {
++                if (!s.is_object()) {
++                    throw std::runtime_error("gt_relied.spans entries must be objects");
++                }
++                task_params::gt_span sp;
++                sp.id    = json_value(s, "id", std::string());
++                sp.start = json_value(s, "start", 0);
++                sp.end   = json_value(s, "end", 0);
++                if (sp.id.empty()) {
++                    throw std::runtime_error("gt_relied.spans need an id");
++                }
++                params.gt_spans.push_back(std::move(sp));
++            }
++        }
++        params.gt_relied_on = !params.gt_heads.empty() && !params.gt_spans.empty();
++        if ((g.contains("heads") || g.contains("spans")) && !params.gt_relied_on) {
++            throw std::runtime_error("gt_relied needs heads and spans; empty heads is not all-heads");
++        }
++    }
++    if (data.contains("gt_dial") && data["gt_dial"].is_object()) {
++        const json & g = data["gt_dial"];
++        params.gt_dial_alpha = json_value(g, "alpha", 0.0f);
++        if (g.contains("spans") && g["spans"].is_array()) {
++            for (const auto & s : g["spans"]) {
++                if (!s.is_object()) {
++                    throw std::runtime_error("gt_dial.spans entries must be objects");
++                }
++                task_params::gt_span sp;
++                sp.id    = json_value(s, "id", std::string());
++                sp.start = json_value(s, "start", 0);
++                sp.end   = json_value(s, "end", 0);
++                if (sp.id.empty()) {
++                    throw std::runtime_error("gt_dial.spans need an id");
++                }
++                params.gt_dial_spans.push_back(std::move(sp));
++            }
++        }
++        params.gt_dial_on = params.gt_dial_alpha > 0.0f && !params.gt_dial_spans.empty();
++        if ((g.contains("alpha") || g.contains("spans")) && !params.gt_dial_on) {
++            throw std::runtime_error("gt_dial needs alpha > 0 and spans");
++        }
++    }
++    if (data.contains("gt_press") && data["gt_press"].is_object()) {
++        const json & g = data["gt_press"];
++        params.gt_press_strength = json_value(g, "strength", 0.0f);
++        params.gt_press_n_prompt = json_value(g, "n_prompt", 0);
++        if (g.contains("heads") && g["heads"].is_array()) {
++            for (const auto & h : g["heads"]) {
++                if (!h.is_array() || h.size() != 2) {
++                    throw std::runtime_error("gt_press.heads entries must be [layer, head]");
++                }
++                params.gt_press_heads.push_back({h.at(0).get<int>(), h.at(1).get<int>()});
++            }
++        }
++        if (g.contains("spans") && g["spans"].is_array()) {
++            for (const auto & s : g["spans"]) {
++                if (!s.is_object()) {
++                    throw std::runtime_error("gt_press.spans entries must be objects");
++                }
++                task_params::gt_span sp;
++                sp.id    = json_value(s, "id", std::string());
++                sp.start = json_value(s, "start", 0);
++                sp.end   = json_value(s, "end", 0);
++                if (sp.id.empty()) {
++                    throw std::runtime_error("gt_press.spans need an id");
++                }
++                params.gt_press_spans.push_back(std::move(sp));
++            }
++        }
++        params.gt_press_on = params.gt_press_strength > 0.0f
++            && !params.gt_press_heads.empty()
++            && !params.gt_press_spans.empty();
++        if ((g.contains("strength") || g.contains("heads") || g.contains("spans"))
++                && !params.gt_press_on) {
++            throw std::runtime_error("gt_press needs strength, heads, and spans; empty heads is not all-heads");
++        }
++    }
++    if (params.gt_dial_on && params.gt_press_on) {
++        throw std::runtime_error("gt_dial and gt_press together refused");
++    }
+     params.sampling.min_keep           = json_value(data, "min_keep",            defaults.sampling.min_keep);
+     params.sampling.backend_sampling   = json_value(data, "backend_sampling",    defaults.sampling.backend_sampling);
+     params.post_sampling_probs         = json_value(data, "post_sampling_probs", defaults.post_sampling_probs);
+@@ -753,6 +844,18 @@ json server_task_result_cmpl_final::to_json_non_oaicompat() {
+     if (!stream && !probs_output.empty()) {
+         res["completion_probabilities"] = completion_token_output::probs_vector_to_json(probs_output, post_sampling_probs);
+     }
++    if (!gt_relied.empty() || gt_relied_n_steps > 0 || gt_relied_saw_softmax) {
++        res["gt_relied"] = gt_relied;
++        res["gt_relied_n_steps"] = gt_relied_n_steps;
++        res["gt_relied_n_heads"] = gt_relied_n_heads;
++        res["gt_relied_saw_softmax"] = gt_relied_saw_softmax;
++    }
++    if (gt_dial_applied) {
++        res["gt_dial_applied"] = true;
++    }
++    if (gt_press_applied) {
++        res["gt_press_applied"] = true;
++    }
+     return response_fields.empty() ? res : json_get_nested_values(response_fields, res);
+ }
+ 
+diff --git a/tools/server/server-task.h b/tools/server/server-task.h
+index a49ddb59..84ded3ad 100644
+--- a/tools/server/server-task.h
++++ b/tools/server/server-task.h
+@@ -7,6 +7,7 @@
+ #include <unordered_set>
+ #include <list>
+ #include <map>
++#include <utility>
+ 
+ // TODO: prevent including the whole server-common.h as we only use server_tokens
+ #include "server-common.h"
+@@ -88,6 +89,26 @@ struct task_params {
+ 
+     json format_logit_bias(const std::vector<llama_logit_bias> & logit_bias) const;
+     json to_json(bool only_metrics = false) const;
++
++    // RELIED: named spans + profiled heads. Empty heads never means all-heads.
++    bool gt_relied_on = false;
++    std::vector<std::pair<int,int>> gt_heads;
++    struct gt_span {
++        std::string id;
++        int32_t start = 0;
++        int32_t end   = 0;
++    };
++    std::vector<gt_span> gt_spans;
++
++    bool  gt_dial_on = false;
++    float gt_dial_alpha = 0.0f;
++    std::vector<gt_span> gt_dial_spans;
++
++    bool  gt_press_on = false;
++    float gt_press_strength = 0.0f;
++    int32_t gt_press_n_prompt = 0;
++    std::vector<std::pair<int,int>> gt_press_heads;
++    std::vector<gt_span> gt_press_spans;
+ };
+ 
+ // struct for tracking the state of a task (e.g., for streaming)
+@@ -403,6 +424,13 @@ struct server_task_result_cmpl_final : server_task_result {
+     json to_json_anthropic();
+ 
+     json to_json_anthropic_stream();
++
++    json gt_relied = json::object();
++    int  gt_relied_n_steps = 0;
++    int  gt_relied_n_heads = 0;
++    bool gt_relied_saw_softmax = false;
++    bool gt_dial_applied = false;
++    bool gt_press_applied = false;
+ };
+ 
+ struct server_task_result_cmpl_partial : server_task_result {

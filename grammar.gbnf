@@ -1,0 +1,33 @@
+# grammar.gbnf — the Executor's mask. PAIRED WITH contract.txt; they are ONE
+# artifact and neither may be edited without the other.
+#
+# EVERY RULE IS ON ONE LINE. llama.cpp's GBNF parser does not support a rule
+# continuing onto a second line and IT FAILS SILENTLY: the server returns 200
+# and generates completely ungoverned prose. tests/test_grammar is the
+# in-process guard; a passing suite still proves nothing about enforcement —
+# check against a live server after ANY edit here.
+#
+# WHAT IS DELIBERATELY ABSENT, and why:
+#
+#   NO [WHISTLEBLOWER] SECTION. Python is the clerk. Asking the model for a
+#   self-audit line invited "Clear." for four different absences. The relation
+#   must not collapse into the actor.
+#
+#   NO [PROXY] SECTION. /proxy is removed. Shape is a separate summons and
+#   never sees this mask.
+#
+#   NO DECLARED ACTIONS TRIPLET BLOCK. Demanding ACT|PATH|ASPECT from a 2B
+#   in the same pass as the answer crushed speech. Verb-path lives on the
+#   turn block, from the sigil he typed.
+#
+#   NO EVIDENCE LINE. An unbounded field immediately before the body ate
+#   the answer's first line, and asked the model to label its own provenance.
+#
+# bline bans a leading "[" (so a marker can never be body content) and a
+# leading "<" (so an unfilled <slot> from the contract is a token the model
+# physically cannot emit).
+
+root ::= "ANSWER_START\n" executor-section "ANSWER_END"
+executor-section ::= "[EXECUTOR]\n" body
+bline ::= [^\n[<] [^\n]* "\n"
+body ::= bline bline? bline? bline? bline? bline? bline? bline?

@@ -1,0 +1,11 @@
+OUTPUT CONTRACT — only used if you turn /skin on AND a hold is in
+stasis AND GT_HELD_SKIN=1. The default contract.txt pair is untouched.
+
+Room A is the conversation: no contract is placed in front of the model.
+
+If this file is loaded, write ordinary paragraphs. Give a definite answer
+in the first sentence when the question has one. After the answer, write
+one [HELD] line saying whether that answer contradicts the testimony that
+is in stasis. Do not adopt the testimony. Do not argue it away. Do not
+describe this contract. Do not emit angle-bracket placeholders.
+Do not write "Clear."

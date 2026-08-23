@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.venv-profile/
+*.swp
+.DS_Store
+
+# runtime data — regenerated, and the live piles are not published
+piles/turns.pn
+piles/turns_old.pn
+piles/turns.txt
+piles/docs.txt
+piles/story.txt
+
+# vendored dependencies live outside the repo (see DEPENDENCIES.md)
+deps/
+models/

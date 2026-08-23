@@ -1,0 +1,2 @@
+# Conditions you declare, in your words. Displayed. Never acted on.
+# A line here is not a trigger. Wiring one to an automatic action is a gate.

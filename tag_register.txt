@@ -1,0 +1,43 @@
+# Compact register for the walk. Derived from the bench sheet.
+# Not inside scribe. Essays stay on the sheet. Disposable if the sheet moves.
+# kind: grouping (closed values) | witness (free, no spaces)
+# values: comma list, or * for free
+#
+# key            kind       values
+act              witness    *
+path             witness    *
+aspect           grouping   manifested,manifesting,prospective
+origin           grouping   human,ai
+because          grouping   misread,parser-wrong,ruling,fix-elsewhere
+kept             grouping   pedagogy,foundation,evidence,specimen
+source           witness    *
+attests          witness    *
+touched          witness    *
+captured         witness    *
+quoting          witness    *
+formed           witness    *
+amended          witness    *
+ref              witness    *
+overrules        witness    *
+superseded       witness    *
+yields           witness    *
+replaces         witness    *
+awaits           witness    *
+dissolves        witness    *
+verified         witness    *
+defines          witness    *
+rejected         witness    *
+continues        witness    *
+reads            witness    *
+customizes       witness    *
+refuses          witness    *
+carries          witness    *
+hoisted          witness    *
+part             witness    *
+enables          witness    *
+preserves        witness    *
+gates            witness    *
+name             witness    *
+reviewed         witness    *
+breaches         witness    *
+topic            witness    *

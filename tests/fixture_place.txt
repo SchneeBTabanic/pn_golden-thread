@@ -1,0 +1,2 @@
+The first line of the placed file is ALPHA-PLACED.
+This file exists so a test can file: it and see FETCHED: this path.

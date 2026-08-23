@@ -1,0 +1,27 @@
+# grammar_held.gbnf — the Executor's mask PLUS a [HELD] seat.
+# PAIRED WITH contract_held.txt; they are ONE artifact and neither
+# may be edited without the other.
+#
+# Selected only while /held is non-empty AND GT_HELD_SKIN=1.
+# The original grammar.gbnf + contract.txt pair is untouched and is
+# the mask used otherwise. This file is never the default.
+#
+# EVERY RULE IS ON ONE LINE. llama.cpp's GBNF parser does not support a rule
+# continuing onto a second line and IT FAILS SILENTLY: the server returns 200
+# and generates completely ungoverned prose.
+#
+# WHAT THIS ADDS: a required [HELD] section of one line after the answer.
+# Known risk: extra structure in the same pass crushed speech on a small
+# model. That is why this pair sits behind GT_HELD_SKIN=1.
+#
+# WHAT IS STILL DELIBERATELY ABSENT (same as grammar.gbnf):
+#   NO [WHISTLEBLOWER] SECTION. Python is the clerk.
+#   NO [PROXY] SECTION.
+#   NO DECLARED ACTIONS TRIPLET BLOCK.
+#   NO EVIDENCE LINE.
+
+root ::= "ANSWER_START\n" executor-section held-section "ANSWER_END"
+executor-section ::= "[EXECUTOR]\n" body
+held-section ::= "[HELD]\n" bline
+bline ::= [^\n[<] [^\n]* "\n"
+body ::= bline bline? bline? bline? bline? bline? bline? bline?

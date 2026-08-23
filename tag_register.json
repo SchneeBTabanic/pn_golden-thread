@@ -1,0 +1,242 @@
+{
+  "about": "Register for this runtime's clerk and path-stack. Not inside scribe. English explanations are for Python and for any English reader. Dango is not fed this file. L1 is Japanese, then gloss, then L2 hyphenated @act/@path. Python uses this list to accept, refuse, and name seats.",
+  "source_sheet": "pn_scribe-wb/tagging/TAGS-bench-sheet.derived.md",
+  "keys": {
+    "act": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "What this block DOES. A verb phrase, hyphenated. Not a category. Strip the verb: if a tidy noun remains, the verb was decoration."
+    },
+    "path": {
+      "kind": "witness",
+      "values": null,
+      "named_empties": ["not-yet-discerned", "ruled-none"],
+      "meaning": "What it reaches toward. Direction word plus at least two real words (toward-… / away-from-…). not-yet-discerned = I have not looked. ruled-none = I looked and there is none."
+    },
+    "aspect": {
+      "kind": "grouping",
+      "values": ["manifesting", "manifested", "prospective"],
+      "meaning": "How ripe it is. manifesting = becoming. manifested = settled. prospective = promised, not yet — the pod."
+    },
+    "origin": {
+      "kind": "grouping",
+      "values": ["human", "ai"],
+      "meaning": "Which kind of mind made the body. Not who vouches (that is attests)."
+    },
+    "because": {
+      "kind": "grouping",
+      "values": ["misread", "parser-wrong", "ruling", "fix-elsewhere"],
+      "meaning": "Why a block overrules another. Closed four. Pair with overrules."
+    },
+    "kept": {
+      "kind": "grouping",
+      "values": ["pedagogy", "foundation", "evidence", "specimen"],
+      "meaning": "Why something unused is still here. A museum label."
+    },
+    "source": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "Whose saying this is (citation of a fixed past). Any spelling, keep it consistent."
+    },
+    "attests": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "Who vouches, which may not be who wrote it. origin:ai attests:self = the AI wrote it, I stand behind it."
+    },
+    "touched": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "A mind that passed through lightly, not the owner. Used here for executor, dango, proxy, shape, schnee, grok."
+    },
+    "captured": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "Where-and-when the text arrived (a session, a thread). Historical, unlike source."
+    },
+    "quoting": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "A pin so a citation cannot rot quietly. sha256:… or file:lines."
+    },
+    "formed": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "When this saying came to be (a date)."
+    },
+    "amended": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "When a later layer was added (a date)."
+    },
+    "reviewed": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "A human claim: I read this since that version or date and acted. A machine must not write this as if it had read."
+    },
+    "ref": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "This block reaches to that block (id or 辻…#id). Presence is belonging; a reference is salience."
+    },
+    "overrules": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "This block sets that one aside. Always pair with because."
+    },
+    "superseded": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "Put on the OLD block, pointing at what replaced it. Never only on the new one."
+    },
+    "yields": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "If these two ever contradict, that one wins. Decided while calm."
+    },
+    "replaces": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "A rewrite of that block, kept as a separate change."
+    },
+    "awaits": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "The encounter that would prove this. A call-me-when note. Discloses. Never auto-promotes."
+    },
+    "dissolves": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "The condition that would make this obsolete. A throw-me-away-when note."
+    },
+    "verified": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "After the fact: what actually confirmed a prospective. Written at the close, not at birth."
+    },
+    "defines": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "This is where that word was born. Only a human knows. Not a machine count of mentions."
+    },
+    "rejected": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "The road considered and not taken. Stops the dead idea returning as if new."
+    },
+    "continues": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "This block is another chapter of that whole, not a new thing."
+    },
+    "reads": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "after-#id — the order a human should read, which is not arrival order."
+    },
+    "customizes": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "A small local adaptation of that block, declared as such."
+    },
+    "refuses": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "A capability deliberately left out, so nobody assumes it was never considered."
+    },
+    "carries": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "What would fall without this block. Load-bearing, not decoration."
+    },
+    "hoisted": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "from-#id — this used to be squeezed inside that block and needed its own space."
+    },
+    "part": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "Which derived artifact this block belongs to (guide, walk, on-path…). Lets export pull one audience."
+    },
+    "enables": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "What someone else must be able to DO because of this block. A verb they can perform."
+    },
+    "preserves": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "What this change deliberately left alone. The anti-over-reading guard."
+    },
+    "gates": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "The irreversible act this block is withholding."
+    },
+    "forecloses": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "The retreat this block ends. Past here there is no backing out."
+    },
+    "defers": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "Whose judgment this is, even though you technically could act."
+    },
+    "watches": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "An outside path or file this block is keeping an eye on. Often with quoting:sha256."
+    },
+    "name": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "A say-again label. scribe recall finds the newest block that carries it."
+    },
+    "topic": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "A descriptive grouping word. Dead only if it is the only meaning-carrier (no act/path)."
+    },
+    "breaches": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "A rule this block knowingly broke. A confession kept, not a bug report."
+    },
+    "relaxes": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "This change loosened a requirement."
+    },
+    "tightens": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "This change made a requirement stricter."
+    },
+    "reverts": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "This undid an earlier change. The earlier one still stands in the history."
+    },
+    "renames": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "You retired a key; this records the old spelling."
+    },
+    "relied": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "retrieval-head attention mass on a placed span, measured by the server hook; a reading, not a faithfulness claim"
+    },
+    "dialed": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "human-set contrastive force toward a placed span; a throttle, not a reading"
+    },
+    "pressed": {
+      "kind": "witness",
+      "values": null,
+      "meaning": "human-set attention bias on a placed span; a throttle, not a reading"
+    }
+  }
+}

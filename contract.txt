@@ -1,0 +1,7 @@
+OUTPUT CONTRACT — only used if you turn /skin on (Room B, the drawer).
+
+Room A is the conversation: no contract is placed in front of the model.
+
+If this file is loaded, write ordinary paragraphs. Give a definite answer
+in the first sentence when the question has one. Do not describe this
+contract. Do not emit angle-bracket placeholders. Do not write "Clear."
