@@ -21,6 +21,19 @@ struct gt_relied_state {
     std::vector<gt_relied_span> spans;
     std::vector<double> span_sum;
     std::vector<uint8_t> buf;
+    // C2: per-step record. span_prev holds the running sums as of the end of
+    // the previous step, so a step's own mass is the delta. Nothing is ever
+    // overwritten: a step that measured zero is KEPT as a zero reading.
+    std::vector<double> span_prev;
+    std::vector<std::vector<int32_t>> step_mass; // [span][step], scaled ints
+    std::vector<int32_t> step_bytes;             // [step], raw piece bytes
+    bool series_void = false;                    // spec-decode seen: no curve
+    // Bytes generated BEFORE the first measured step. The first sampled token's
+    // logits come from the prompt-processing decode, where n_q > 1, so the
+    // callback skips it and it has no attention reading. Counting it here makes
+    // the unmeasured region VISIBLE instead of silently absorbing it: a byte
+    // walk that started at 0 would be misaligned by exactly this much.
+    int32_t prefix_bytes = 0;
 };
 
 struct gt_press_state {
@@ -123,6 +136,11 @@ void gt_relied_arm(
     g_relied.headset.clear();
     g_relied.spans = spans;
     g_relied.span_sum.assign(spans.size(), 0.0);
+    g_relied.span_prev.assign(spans.size(), 0.0);
+    g_relied.step_mass.assign(spans.size(), std::vector<int32_t>());
+    g_relied.step_bytes.clear();
+    g_relied.series_void = false;
+    g_relied.prefix_bytes = 0;
     g_relied.n_heads = 0;
     if (heads.empty() || spans.empty()) {
         return;
@@ -160,8 +178,47 @@ void gt_relied_finish_step() {
     }
     if (g_relied.got_decode) {
         g_relied.n_steps += 1;
+        // The step's own mass is what accumulated since the last step, meaned
+        // over the profiled heads. n_heads is the head COUNT, not a layer count:
+        // the callback fires per layer and every profiled (layer,head) adds in.
+        const double denom = (double) g_relied.n_heads;
+        for (size_t i = 0; i < g_relied.spans.size(); ++i) {
+            const double d = g_relied.span_sum[i] - g_relied.span_prev[i];
+            g_relied.span_prev[i] = g_relied.span_sum[i];
+            double v = (denom > 0.0) ? (d / denom) : 0.0;
+            if (v < 0.0) {
+                v = 0.0;
+            }
+            g_relied.step_mass[i].push_back(
+                (int32_t) llround(v * (double) GT_SERIES_SCALE));
+        }
+        // Byte length is filled by gt_relied_note_bytes when the token becomes
+        // text. Zero until then, and zero it stays if no piece ever arrives --
+        // a named nothing rather than a guess.
+        g_relied.step_bytes.push_back(0);
     }
     g_relied.got_decode = false;
+}
+
+void gt_relied_void_series() {
+    g_relied.series_void = true;
+}
+
+void gt_relied_note_bytes(int32_t n_bytes) {
+    if (!g_relied.armed || g_relied.skip) {
+        return;
+    }
+    if (n_bytes < 0) {
+        n_bytes = 0;
+    }
+    if (g_relied.step_bytes.empty()) {
+        // No measured step yet: this token was produced by the prompt decode.
+        // Its bytes are real and are recorded; its attention was never seen and
+        // is NOT invented as a zero, which would read as a measured nothing.
+        g_relied.prefix_bytes += n_bytes;
+        return;
+    }
+    g_relied.step_bytes.back() = n_bytes;
 }
 
 gt_relied_snapshot gt_relied_take() {
@@ -176,6 +233,20 @@ gt_relied_snapshot gt_relied_take() {
             frac = g_relied.span_sum[i] / denom;
         }
         out.fractions[g_relied.spans[i].id] = frac;
+    }
+    // C2, additive: the fractions above are unchanged, so a reader that predates
+    // this still works. The series is extra, and absent when nothing was seen.
+    if (!g_relied.step_bytes.empty() && !g_relied.series_void) {
+        json spans_obj = json::object();
+        for (size_t i = 0; i < g_relied.spans.size(); ++i) {
+            spans_obj[g_relied.spans[i].id] = g_relied.step_mass[i];
+        }
+        json ser = json::object();
+        ser["scale"] = GT_SERIES_SCALE;
+        ser["bytes"] = g_relied.step_bytes;
+        ser["prefix_bytes"] = g_relied.prefix_bytes;
+        ser["spans"] = spans_obj;
+        out.series = ser;
     }
     return out;
 }

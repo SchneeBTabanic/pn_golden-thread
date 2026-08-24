@@ -32,7 +32,27 @@ struct gt_relied_snapshot {
     int n_steps = 0;
     int n_heads = 0;
     bool saw_softmax = false;
+    // C2: the per-token series. {scale, bytes:[...], spans:{id:[...]}}
+    // Empty when nothing was recorded. The hook is CUT-IGNORANT: nothing
+    // here marks a face, a sequel or a boundary. Python derives all of that
+    // after the tape cuts, so this wire never changes when the tape does.
+    json series = json::object();
 };
+
+// GT_SERIES_SCALE: masses ride as integers so the record carries exactly what
+// the wire carried. Must equal relied.SERIES_SCALE on the Python side.
+#define GT_SERIES_SCALE 10000
+
+// Byte length of the piece the step just sampled. Called where the token
+// becomes text, which is AFTER gt_relied_finish_step() closes the step, so it
+// fills the most recent step. RAW byte length, never a decoded character count.
+void gt_relied_note_bytes(int32_t n_bytes);
+
+// Speculative decoding accepts several tokens from one decode step, so the
+// one-step-one-piece pairing the series rests on does not hold. Rather than
+// emit a curve that is quietly wrong, that path VOIDS the series: fractions
+// still stand, and Python sees a named absence instead of a lie.
+void gt_relied_void_series();
 
 void gt_relied_arm(
     const std::vector<std::pair<int,int>> & heads,

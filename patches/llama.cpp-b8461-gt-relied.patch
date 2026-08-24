@@ -12,7 +12,7 @@ index 5621a51b..455efd1e 100644
  
  if (BUILD_SHARED_LIBS)
 diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
-index 9de554e9..2f389906 100644
+index 9de554e9..3a878710 100644
 --- a/tools/server/server-context.cpp
 +++ b/tools/server/server-context.cpp
 @@ -11,9 +11,11 @@
@@ -78,7 +78,7 @@ index 9de554e9..2f389906 100644
          slot.state = slot.task->is_child()
              ? SLOT_STATE_WAIT_OTHER // wait for the parent to process prompt
              : SLOT_STATE_STARTED;
-@@ -1515,6 +1540,22 @@ private:
+@@ -1515,6 +1540,23 @@ private:
  
          res->generation_params = slot.task->params; // copy the parameters
  
@@ -88,6 +88,7 @@ index 9de554e9..2f389906 100644
 +            res->gt_relied_n_steps = snap.n_steps;
 +            res->gt_relied_n_heads = snap.n_heads;
 +            res->gt_relied_saw_softmax = snap.saw_softmax;
++            res->gt_relied_series = snap.series;
 +            gt_relied_disarm();
 +        }
 +        if (slot.task->params.gt_dial_on) {
@@ -101,7 +102,7 @@ index 9de554e9..2f389906 100644
          queue_results.send(std::move(res));
      }
  
-@@ -2068,7 +2109,7 @@ private:
+@@ -2068,7 +2110,7 @@ private:
              // generate draft tokens in speculative decoding mode
              // TODO: rework to have a single draft llama_context shared across all slots [TAG_SERVER_SPEC_REWORK]
              //       perform the speculative drafting for all sequences at the same time in a single batch
@@ -110,7 +111,7 @@ index 9de554e9..2f389906 100644
              if (n_draft_max > 0) {
                  if (mctx) {
                      // we should never reach this, as speculative is automatically disabled if mmproj is loaded
-@@ -2706,6 +2747,7 @@ private:
+@@ -2706,6 +2748,7 @@ private:
              };
  
              const int ret = llama_decode(ctx, batch_view);
@@ -118,7 +119,7 @@ index 9de554e9..2f389906 100644
  
              metrics.on_decoded(slots);
  
-@@ -2833,7 +2875,59 @@ private:
+@@ -2833,7 +2876,59 @@ private:
  
                  const int tok_idx = slot.i_batch - i;
  
@@ -179,8 +180,29 @@ index 9de554e9..2f389906 100644
  
                  slot.i_batch = -1;
  
+@@ -2855,6 +2950,10 @@ private:
+                 completion_token_output result;
+                 result.tok          = id;
+                 result.text_to_send = common_token_to_piece(ctx, result.tok, accept_special_token(slot, result.tok));
++                // C2: RAW byte length of this step's piece. std::string::size() is
++                // bytes, which is the point -- a character count would lose the
++                // sigil 辻, whose two tokens each decode alone to U+FFFD.
++                gt_relied_note_bytes((int32_t) result.text_to_send.size());
+                 result.prob         = 1.0f; // TODO: set it here instead of doing inside populate_token_probs
+ 
+                 if (slot.task->params.sampling.n_probs > 0) {
+@@ -2911,6 +3010,9 @@ private:
+ 
+                     result.tok          = ids[i];
+                     result.text_to_send = common_token_to_piece(ctx, result.tok, accept_special_token(slot, result.tok));
++                        // Spec decode breaks one-step-one-piece. Void the curve
++                        // rather than emit a wrong one; fractions still stand.
++                        gt_relied_void_series();
+                     result.prob         = 1.0f; // set later
+ 
+                     // TODO: set result.probs
 diff --git a/tools/server/server-task.cpp b/tools/server/server-task.cpp
-index 7d543b92..5059358b 100644
+index 7d543b92..abe40633 100644
 --- a/tools/server/server-task.cpp
 +++ b/tools/server/server-task.cpp
 @@ -298,6 +298,97 @@ task_params server_task::params_from_json_cmpl(
@@ -281,7 +303,7 @@ index 7d543b92..5059358b 100644
      params.sampling.min_keep           = json_value(data, "min_keep",            defaults.sampling.min_keep);
      params.sampling.backend_sampling   = json_value(data, "backend_sampling",    defaults.sampling.backend_sampling);
      params.post_sampling_probs         = json_value(data, "post_sampling_probs", defaults.post_sampling_probs);
-@@ -753,6 +844,18 @@ json server_task_result_cmpl_final::to_json_non_oaicompat() {
+@@ -753,6 +844,21 @@ json server_task_result_cmpl_final::to_json_non_oaicompat() {
      if (!stream && !probs_output.empty()) {
          res["completion_probabilities"] = completion_token_output::probs_vector_to_json(probs_output, post_sampling_probs);
      }
@@ -289,6 +311,9 @@ index 7d543b92..5059358b 100644
 +        res["gt_relied"] = gt_relied;
 +        res["gt_relied_n_steps"] = gt_relied_n_steps;
 +        res["gt_relied_n_heads"] = gt_relied_n_heads;
++        if (!gt_relied_series.empty()) {
++            res["gt_relied_series"] = gt_relied_series;
++        }
 +        res["gt_relied_saw_softmax"] = gt_relied_saw_softmax;
 +    }
 +    if (gt_dial_applied) {
@@ -301,7 +326,7 @@ index 7d543b92..5059358b 100644
  }
  
 diff --git a/tools/server/server-task.h b/tools/server/server-task.h
-index a49ddb59..84ded3ad 100644
+index a49ddb59..692d4bab 100644
 --- a/tools/server/server-task.h
 +++ b/tools/server/server-task.h
 @@ -7,6 +7,7 @@
@@ -339,7 +364,7 @@ index a49ddb59..84ded3ad 100644
  };
  
  // struct for tracking the state of a task (e.g., for streaming)
-@@ -403,6 +424,13 @@ struct server_task_result_cmpl_final : server_task_result {
+@@ -403,6 +424,14 @@ struct server_task_result_cmpl_final : server_task_result {
      json to_json_anthropic();
  
      json to_json_anthropic_stream();
@@ -348,6 +373,7 @@ index a49ddb59..84ded3ad 100644
 +    int  gt_relied_n_steps = 0;
 +    int  gt_relied_n_heads = 0;
 +    bool gt_relied_saw_softmax = false;
++    json gt_relied_series = json::object(); // C2, empty when not recorded
 +    bool gt_dial_applied = false;
 +    bool gt_press_applied = false;
  };
