@@ -47,6 +47,10 @@ cd ../..
 
 # 5. a Granite 3.3 GGUF (2B Q4_K_M is enough to talk; 8B if you have VRAM)
 #    ibm-granite on HuggingFace; put the file in models/ and name it in env.sh
+#
+# Optional /walk only — Dango is HuggingFace safetensors, not a GGUF:
+#    huggingface-cli download mattashiho/dango-1.8b-100Btok \
+#      --local-dir models/dango-1.8b
 ```
 
 Skip `git apply` + copy and you get a stock server: talk works, RELIED
@@ -233,9 +237,11 @@ export GT_DANGO_SITE="$GT_WEB_SITE"
 ```
 
 `GT_WEB_SITE` is already set from `deps/venv` when that venv exists.
-`source env.sh` again. Talk without `/walk` does not need torch. If Dango
-still cannot start, `/walk` prints why (missing weights, or still no
-torch). Talk and `/sheet` work without this.
+`source env.sh` again. Talk without `/walk` does not need torch. Weights:
+`https://huggingface.co/mattashiho/dango-1.8b-100Btok` into
+`models/dango-1.8b` (see `DEPENDENCIES.md`). If Dango still cannot
+start, `/walk` prints why (missing weights, or still no torch). Talk
+and `/sheet` work without this.
 
 If `/walk` **does** load and then shows `error: Dango produced no Japanese`,
 that is Dango’s **sentence** coming back empty — not “it found no reliable

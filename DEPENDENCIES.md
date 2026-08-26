@@ -141,10 +141,21 @@ sudo apt install pandoc poppler-utils
 | `granite-3.3-2b-Q4_K_M.gguf` | 1.5 GB | `MODEL` | default engine |
 | `granite-3.3-8b-Q4_K_M.gguf` | 4.9 GB | `MODEL` | the 8B path |
 | `granite-3.3-8b-hf` | 16 GB | `--hf` | offline 4a profiler only |
-| `dango-1.8b` | 3.5 GB | `GT_DANGO` | `!path` Japanese tagging only |
+| `dango-1.8b` | 3.5 GB | `GT_DANGO` | optional `/walk` Japanese (not talk) |
 
-Granite from `ibm-granite` on HuggingFace; GGUF quantisations are widely
-mirrored. **Only the first is needed to talk.** The rest are optional paths.
+Granite GGUF from `ibm-granite` on HuggingFace; quantisations are widely
+mirrored. **Only the 2B GGUF is needed to talk.**
+
+Dango (optional `/walk` only) is **not** a GGUF and **not** llama.cpp.
+Checkpoint: <https://huggingface.co/mattashiho/dango-1.8b-100Btok>
+(Shiho Matta et al.; code <https://github.com/mattashiho233/dango>).
+Put the snapshot at `models/dango-1.8b` so `GT_DANGO` matches `env.example.sh`:
+
+```sh
+# needs: pip install huggingface_hub   (or huggingface-cli)
+huggingface-cli download mattashiho/dango-1.8b-100Btok \
+  --local-dir models/dango-1.8b
+```
 
 Default engine is `llama-server` at `:8080`. Ollama is a permitted client for
 unmasked talk (`GT_OLLAMA`), not the architecture.
