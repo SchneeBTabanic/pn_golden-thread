@@ -47,8 +47,10 @@ export NGL="${NGL:-99}"
 # actually contains torch, or /walk names the refusal and talk still works.
 # export GT_DANGO_SITE="$GT_WEB_SITE"   # only if you pip install torch there
 export GT_DANGO="$ROOT/models/dango-1.8b"
-export GT_GLOSS_PY="$ROOT/deps/tagging-lab/gloss.py"
-export GT_GLOSS_PYTHON="$ROOT/deps/tagging-lab/.venv/bin/python"
+# Real Leipzig glosser, shipped in this repo (not ontology-midwife).
+# Needs sudachipy + sudachidict_core in the talk venv. Do not stub this file.
+export GT_GLOSS_PY="$ROOT/tagging-lab/gloss.py"
+export GT_GLOSS_PYTHON="$ROOT/deps/venv/bin/python"
 
 # gForth is expected on PATH (Debian: apt install gforth). Override if not.
 export GT_GFORTH="${GT_GFORTH:-gforth}"

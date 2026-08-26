@@ -48,9 +48,11 @@ cd ../..
 # 5. a Granite 3.3 GGUF (2B Q4_K_M is enough to talk; 8B if you have VRAM)
 #    ibm-granite on HuggingFace; put the file in models/ and name it in env.sh
 #
-# /walk (Dango) — HuggingFace safetensors, not a GGUF. Verb-path reveal:
-#    huggingface-cli download mattashiho/dango-1.8b-100Btok \
-#      --local-dir models/dango-1.8b
+# /walk (Dango) — HuggingFace safetensors, not a GGUF. Verb-path reveal.
+#    Some huggingface_hub builds have no `python -m huggingface_hub download`
+#    entry. snapshot_download always works:
+#    deps/venv/bin/pip install huggingface_hub
+#    deps/venv/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download('mattashiho/dango-1.8b-100Btok', local_dir='models/dango-1.8b')"
 ```
 
 Skip `git apply` + copy and you get a stock server: talk works, RELIED
@@ -232,13 +234,16 @@ The venv is a **box of libraries**, not a second engine. `env.sh` points
 process puts that folder on its import path and loads torch **inside
 itself**. No second server, no second Python.
 
-Talk’s `requirements.txt` venv is enough for the TUI. Dango needs extra
-**torch** and **transformers** in that same box. On Debian/Ubuntu:
+Talk’s `requirements.txt` venv is enough for the TUI. `/walk` needs extra
+packages in that same box. On Debian/Ubuntu:
 
 ```sh
 # still in the clone directory, after step 3
-deps/venv/bin/pip install torch transformers
+deps/venv/bin/pip install torch transformers huggingface_hub
+deps/venv/bin/pip install sudachipy sudachidict_core   # Leipzig gloss
 ```
+
+`accelerate` is not required. The loader does not use `device_map`.
 
 Then in `env.sh`:
 
@@ -254,6 +259,17 @@ start, `/walk` prints why (missing weights, or still no torch). Talk
 and `/sheet` work without this.
 
 If `/walk` **does** load and then shows `error: Dango produced no Japanese`,
-that is Dango’s **sentence** coming back empty — not “it found no reliable
-`@act`/`@path`”. Act and path are proposed later (Granite + gloss), and
-only after there is Japanese. Empty Japanese means the hop stopped at L1.
+that is Dango’s **sentence** coming back empty or Latin-only — not “it found
+no reliable `@act`/`@path`”. Act and path are proposed later (Granite +
+gloss), and only after there is Japanese. Empty Japanese means the hop
+stopped at L1. Dango 1.8B is a Japanese **base** checkpoint. It is not
+instruction-tuned. Do not replace it with rinna / stablelm-ja / a chat
+variant. A Latin heading followed by real Japanese is still Japanese;
+`/walk` now keeps from the first kana/kanji.
+
+The Leipzig glosser is `tagging-lab/gloss.py` in this repo, with
+`jmdict-lemmas.tsv`. It is not in a private ontology-midwife tree. It
+is the middle of `/walk`, not a display extra. Do not write a
+passthrough stub so `/walk` “completes.” Missing Sudachi: `/walk`
+refuses by name. Talk and `/sheet` still run. Do not swap Dango for an
+instruct-tuned Japanese model.

@@ -788,9 +788,13 @@ def summon_look(declared, sequel):
             jp = path_stack.first_sentence(
                 path_stack.japanese_span(jp) or jp)
             bits = ["DANGO:\n" + (jp or "(no Japanese)")]
-            if jp and path_stack.looks_japanese(jp) and path_stack.gloss_ready():
-                inter, _raw = path_stack.run_gloss(jp)
-                bits.append("GLOSS:\n" + (inter or "(no gloss line)"))
+            if jp and path_stack.looks_japanese(jp):
+                gloss_why = path_stack.gloss_refuse_reason()
+                if gloss_why:
+                    bits.append("GLOSS: REFUSED — " + gloss_why)
+                else:
+                    inter, _raw = path_stack.run_gloss(jp)
+                    bits.append("GLOSS:\n" + (inter or "(no gloss line)"))
             dango_part = "\n\n".join(bits)
             engine = "dango-then-granite"
         except Exception as e:
@@ -916,11 +920,11 @@ class Talk:
         print("!path files leftover speech and summons a look. Python does not score it.")
         print(f"diary: {turn_record.turns_path()}")
         print(window_status())
-        why = path_stack.dango_refuse_reason()
+        why = path_stack.walk_refuse_reason()
         if why:
             print("/walk is not ready: " + why + ". Talk still works.")
         else:
-            print("/walk summons Japanese + gloss on the last turn "
+            print("/walk summons Japanese then Leipzig on the last turn "
                   "(slow first time). It does not file a tag.")
         print("/comment asks what the last record is for. Body only. No tag.")
         print("/sheet proposes on the last turn then binds on the 2B at :8081 (not the face).")
@@ -1212,7 +1216,7 @@ class Talk:
             if last is None:
                 print("/walk needs a completed turn.")
                 return "loop"
-            why = path_stack.dango_refuse_reason()
+            why = path_stack.walk_refuse_reason()
             if why:
                 print("PATH: " + why + ". Talk is still recorded.")
                 return "loop"

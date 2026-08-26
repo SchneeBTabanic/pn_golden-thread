@@ -78,6 +78,23 @@ else
   echo "       $GT_WEB_SITE"
 fi
 
+# /walk hop — talk can start without these; /walk cannot
+if [[ -f "${GT_GLOSS_PY:-}" ]]; then
+  echo "OK     gloss.py (Leipzig — middle of /walk, not a display extra)"
+  echo "       $GT_GLOSS_PY"
+else
+  echo "WALK    gloss.py missing — /walk will refuse. Talk and /sheet still run."
+  echo "         expected: ${GT_GLOSS_PY:-$HERE/tagging-lab/gloss.py}"
+  echo "         do not stub this file; it ships in tagging-lab/"
+fi
+if [[ -d "${GT_DANGO:-}" ]]; then
+  echo "OK     Dango weights"
+  echo "       $GT_DANGO"
+else
+  echo "WALK    Dango weights missing — /walk will refuse. Talk and /sheet still run."
+  echo "         expected: ${GT_DANGO:-$HERE/models/dango-1.8b}"
+fi
+
 echo
 if [[ "$missing" -ne 0 ]]; then
   echo "Not ready. Fetch what is MISSING, edit MODEL= in env.sh if the GGUF"

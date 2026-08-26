@@ -84,7 +84,7 @@ or refuses.
 | Outer out-breath | Face speaks | First answer, whole. RELIED series may listen *while* it speaks (mass on spans you placed — melody, not a mean). | Read that answer as what counts. Do not immediately ask it to improve itself. |
 | Inner in-breath *during* that speech | The hook listens | Per-token retrieval-mass on *your* words. Tape makes one blunt cut (answer / sequel). The curve audits the cut. | `/raw` / `/sequel` if the cut or the leftover matters. Do not argue with the face about the leftover yet. |
 | Pause before the inner out-breath | You decide if the turn should *live* | Not every turn deserves blood. | Joke, probe, discarded outline: leave it. Living work: go to `/sheet`. |
-| Inner out-breath *during* the coming in-breath | 2B proposes, then binds | `/sheet` prints **proposal first, bind speech second**. Optional `/walk` (Dango) is a *reveal*, not a verdict; talk does not wait for it. `/bind` re-asks only the second question. | Read bind *against the face paragraph*. Strip-test (scribe guide §6). `/comment` if bind says it cannot tell. |
+| Inner out-breath *during* the coming in-breath | 2B proposes, then binds | `/sheet` prints **proposal first, bind speech second**. `/walk` (Dango then Leipzig) is a *reveal*, not a verdict; ordinary talk does not call it. `/bind` re-asks only the second question. | Read bind *against the face paragraph*. Strip-test (scribe guide §6). `/comment` if bind says it cannot tell. |
 | Outer in-breath | The record takes the turn in | `/keep` files judged tags **and** the bind paragraph (or `BIND: not spoken this keep — syntactic proposal only`). | You are still the judge. Bind that flatters is still speech. |
 | Sequel breath | Leftover vs a path you name | `!path …` → LOOK on `:8081`. | If LOOK says the leftover sits off the path, `/forget` rather than feeding it back as accepted context. |
 
@@ -369,12 +369,19 @@ exist. They are not part of sheet/bind.
 /shape key:value
 ```
 
-`/walk` — last turn into Japanese + Leipzig gloss (Dango, Torch/HF —
+`/walk` — last turn into Japanese then Leipzig (Dango, Torch/HF —
 not llama.cpp). Reveal. Shown, not filed. Slow the first time
-(weights load). Talk does not wait. If Dango is unset, /walk refuses
-by name. If /walk returns empty speech and no @act / @path, do not
-treat that as a reading — check venv / GT_DANGO / GT_DANGO_SITE
-before you decide the turn has no verb.
+(weights load). Ordinary talk does not call it. If Dango or the
+glosser is unset, /walk refuses by name. Leipzig is the middle of
+this hop, not a display extra: the stems are the shape of `@act` /
+`@path`. If /walk returns empty speech and no @act / @path, do not
+treat that as a reading — check venv / GT_DANGO / GT_DANGO_SITE /
+Sudachi before you decide the turn has no verb. The gloss script is
+`tagging-lab/gloss.py` in this clone. It is not a private midwife
+repo. Do not write a placeholder glosser. Do not replace Dango with
+an instruction-tuned Japanese model: it is a base checkpoint; Option
+A (Granite hop into Japanese, then Dango writes inside Japanese) is
+specified and not this clone’s substitute model.
 
 `/sheet` — last turn + whole tag sheet to `:8081`. Proposes, **then
 binds**. Print order: proposal, then bind speech. Shown, not filed.
@@ -637,7 +644,7 @@ whether the *answer* should live.
 /sheet
 ```
 
-Walk (optional reveal): hear-as-discernment, not hear-as-sound.
+Walk (reveal — Japanese then Leipzig): hear-as-discernment, not hear-as-sound. Skip the summons on a turn that should not live. When you walk, the gloss is the middle of the hop, not a display extra.
 
 `/sheet` now prints two mouths:
 
@@ -819,7 +826,7 @@ where the inner out-breath sits. Do not copy this as a checklist.*
 11. `/history` then `/history act:hear-the-net-lying` (once a tag exists)
 12. `^` when the fold must enter this turn; `^^` for raw ASKED/ANSWERED
 13. `/fold` then `/fold a b` after `/forget`
-14. `/walk` — reveal (optional; before sheet if it should feed bind)
+14. `/walk` — reveal (Japanese then Leipzig; before sheet if it should feed bind)
 15. `/sheet` — propose **then** bind
 16. `/bind` — only if bind did not speak
 17. `/comment` — if bind cannot tell
@@ -854,8 +861,14 @@ understood. Do not build a cathedral where a doorway is needed.
   are speech until you judge.
 - Treating `/walk` as the binding pass.
 - Treating an empty /walk (no Japanese, no act/path) as Dango’s
-  judgment. That emptiness was a venv / GT_DANGO_SITE seam. Refuse
-  by name, or repair the interpreter, then walk again.
+  judgment. That emptiness was a venv / GT_DANGO_SITE seam, or L1
+  hopping English into Japanese (a base checkpoint, not a missing
+  chat template). Refuse by name, or repair the interpreter, then
+  walk again. Do not install rinna to make the prompt look obeyed.
+- Writing a stub `gloss.py` so /walk “completes.” The real glosser
+  ships in `tagging-lab/`. A missing Sudachi: `/walk` refuses. A
+  passthrough pretends a missing gloss is a translated one. Leipzig
+  is the middle of the hop, not a display extra.
 - LOOK expected on the face — after B+C it is on `:8081`; if LOOK
   refuses the window, start the 2B with `-c 8192`, do not amputate
   the sheet.

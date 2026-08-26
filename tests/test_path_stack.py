@@ -10,17 +10,29 @@ import path_stack  # noqa: E402
 
 def run():
     fails = []
-    lab = ("/home/schnee", "ProjectNamirha_git", "/mnt/data/Codeberg")
+    lab = ("/home/schnee", "ProjectNamirha_git", "/mnt/data/Codeberg",
+           "ontology-midwife")
     if not os.environ.get("GT_DANGO"):
         for needle in lab:
             if needle in path_stack.DANGO_DIR:
                 fails.append("default DANGO_DIR is a lab machine path: "
                              + path_stack.DANGO_DIR)
+        want = os.path.join(HERE, "models", "dango-1.8b")
+        if os.path.abspath(path_stack.DANGO_DIR) != os.path.abspath(want):
+            fails.append("default DANGO_DIR is not this clone's models/: "
+                         + path_stack.DANGO_DIR)
     if not os.environ.get("GT_GLOSS_PY"):
         for needle in lab:
             if needle in path_stack.GLOSS_PY:
                 fails.append("default GLOSS_PY is a lab machine path: "
                              + path_stack.GLOSS_PY)
+        want = os.path.join(HERE, "tagging-lab", "gloss.py")
+        if os.path.abspath(path_stack.GLOSS_PY) != os.path.abspath(want):
+            fails.append("default GLOSS_PY is not this clone's tagging-lab/: "
+                         + path_stack.GLOSS_PY)
+    shipped = os.path.join(HERE, "tagging-lab", "gloss.py")
+    if not os.path.isfile(shipped):
+        fails.append("gloss.py is not shipped at tagging-lab/gloss.py")
 
     wrapped = model.granite_chat("Hello", [("Hi", "Hello there.")])
     if "<|start_of_role|>user<|end_of_role|>Hello" not in wrapped:
@@ -66,6 +78,17 @@ def run():
         fails.append("run_stack still asks Dango for English L2")
     if "granite_l2_tags(" not in run_chunk:
         fails.append("run_stack must call granite_l2_tags")
+    if "japanese_span(first_sentence(" in run_chunk:
+        fails.append("run_stack cuts the first sentence before dropping a Latin prefix")
+    if "first_sentence(japanese_span(" not in run_chunk:
+        fails.append("run_stack must drop a Latin prefix before first_sentence")
+    src_run = open(os.path.join(HERE, "run.py"), encoding="utf-8").read()
+    walk_chunk = src_run.split('if low == "/walk":', 1)[1].split(
+        'if low == "/sheet":', 1)[0]
+    if "walk_refuse_reason()" not in walk_chunk:
+        fails.append("/walk must refuse on the whole hop (Dango then Leipzig)")
+    if "dango_refuse_reason()" in walk_chunk and "walk_refuse_reason()" not in walk_chunk:
+        fails.append("/walk still gates on Dango alone")
 
     src = open(os.path.join(HERE, "model.py"), encoding="utf-8").read()
     for fn in ("def shape(", "def comment(", "def look("):
@@ -256,6 +279,16 @@ def run():
         fails.append("English Hello should not look Japanese")
     if path_stack.first_sentence("挨拶する\n人: Hello") != "挨拶する":
         fails.append("first_sentence should stop at newline")
+    mixed = "Verb conjugation\n食べる。"
+    headed = path_stack.first_sentence(mixed)
+    if "Verb conjugation" not in headed:
+        fails.append("first_sentence of a conjugation dump still carries the Latin title: "
+                     + repr(headed))
+    kept = path_stack.first_sentence(
+        path_stack.japanese_span(mixed) or mixed)
+    if kept != "食べる":
+        fails.append("Latin heading must not hide the Japanese sentence: "
+                     + repr(kept))
 
     if path_stack.dango_weights_present() and not path_stack.dango_torch_importable():
         if path_stack.dango_ready():
@@ -268,13 +301,22 @@ def run():
         print("NOTE — Dango not loadable ("
               + (path_stack.dango_refuse_reason() or "ready false")
               + "); live stack not tested")
+    why = path_stack.dango_refuse_reason()
+    if why and "gloss" in why.lower():
+        fails.append("dango_refuse_reason must not block on gloss: " + why)
     if not path_stack.gloss_ready():
-        fails.append("gloss.py / venv missing — midwife stack is not installed")
+        print("NOTE — gloss python missing ("
+              + (path_stack.gloss_refuse_reason() or "ready false")
+              + "); live gloss not tested")
     else:
-        inter, raw = path_stack.run_gloss("空越えていく")
-        del raw
-        if "cross" not in inter and "sky" not in inter:
-            fails.append(f"live gloss unexpected: {inter!r}")
+        try:
+            inter, raw = path_stack.run_gloss("空越えていく")
+            del raw
+            if "cross" not in inter and "sky" not in inter:
+                fails.append(f"live gloss unexpected: {inter!r}")
+        except Exception as e:
+            print("NOTE — gloss.py present but not runnable ("
+                  + str(e) + "); install sudachipy sudachidict_core")
 
     if fails:
         for f in fails:

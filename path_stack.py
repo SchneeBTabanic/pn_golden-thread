@@ -24,16 +24,13 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-_MIDWIFE = os.path.abspath(os.path.join(HERE, "..", "ref", "ontology-midwife"))
 DANGO_DIR = os.environ.get(
     "GT_DANGO",
-    os.path.join(_MIDWIFE, "model", "dango-1.8b"))
+    os.path.join(HERE, "models", "dango-1.8b"))
 GLOSS_PY = os.environ.get(
     "GT_GLOSS_PY",
-    os.path.join(_MIDWIFE, "tagging-lab", "gloss.py"))
-GLOSS_PYTHON = os.environ.get(
-    "GT_GLOSS_PYTHON",
-    os.path.join(_MIDWIFE, "tagging-lab", ".venv", "bin", "python"))
+    os.path.join(HERE, "tagging-lab", "gloss.py"))
+GLOSS_PYTHON = os.environ.get("GT_GLOSS_PYTHON", sys.executable)
 DANGO_TOKENS = int(os.environ.get("GT_DANGO_TOKENS", "80"))
 DANGO_L2_TOKENS = int(os.environ.get("GT_DANGO_L2_TOKENS", "28"))
 DANGO_ASK_TOKENS = int(os.environ.get("GT_DANGO_ASK_TOKENS", "256"))
@@ -212,9 +209,21 @@ def dango_refuse_reason():
             + " — requirements.txt (talk) does not install them. "
             "Talk still works; /walk will not"
         )
-    if not gloss_ready():
-        return "gloss.py or its venv python is missing"
     return ""
+
+
+def gloss_refuse_reason():
+    """Without this, /walk refuses. Dango load is a different organ."""
+    if not os.path.isfile(GLOSS_PY):
+        return "gloss.py missing at " + GLOSS_PY
+    if not os.path.isfile(GLOSS_PYTHON):
+        return "gloss python missing at " + GLOSS_PYTHON
+    return ""
+
+
+def walk_refuse_reason():
+    """The hop is Japanese then Leipzig. Either missing refuses /walk."""
+    return dango_refuse_reason() or gloss_refuse_reason()
 
 
 def gloss_ready():
@@ -238,9 +247,9 @@ def _load_dango():
         mdl = AutoModelForCausalLM.from_pretrained(
             DANGO_DIR,
             dtype=torch.bfloat16,
-            device_map="cpu",
             low_cpu_mem_usage=True,
         )
+        mdl.to("cpu")
         mdl.eval()
         _dango["tok"] = tok
         _dango["model"] = mdl
@@ -457,7 +466,7 @@ def granite_l2_tags(japanese, gloss):
 
 
 def run_gloss(japanese):
-    """Call the midwife glosser. Returns (interlinear, raw_stdout)."""
+    """Call tagging-lab/gloss.py. Returns (interlinear, raw_stdout)."""
     if not gloss_ready():
         raise RuntimeError("gloss.py or its venv python is missing")
     proc = subprocess.run(
@@ -797,10 +806,16 @@ def run_stack(asked, answered, written_act="", written_path=""):
     try:
         raw_ja, cut_note = dango_japanese(asked, answered)
         report["input_cut"] = cut_note
-        ja = japanese_span(first_sentence(raw_ja))
+        # Drop a Latin heading first. Cutting the first line before that
+        # keeps a conjugation-page title and names no Japanese.
+        ja = first_sentence(japanese_span(raw_ja) or raw_ja)
         report["japanese"] = ja
         if not ja or not looks_japanese(ja):
             report["error"] = "Dango produced no Japanese"
+            return report
+        gloss_why = gloss_refuse_reason()
+        if gloss_why:
+            report["error"] = gloss_why
             return report
         if exemplar_copied(ja):
             report["exemplar_copy"] = True

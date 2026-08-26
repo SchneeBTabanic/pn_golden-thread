@@ -117,6 +117,8 @@ playwright==1.58.0     JS-only pages; GT_EDGE_BROWSER=0 disables
 rich                   pulled in by textual
 torch==2.6.0           only for the Dango path stack and the 4a profiler
 transformers==4.57.6   same — not in requirements.txt
+sudachipy + dict       Leipzig gloss subprocess (`tagging-lab/gloss.py`)
+huggingface_hub        Dango snapshot download (the `download` CLI may be absent)
 ```
 
 ```sh
@@ -154,13 +156,22 @@ without Dango; `/walk` then refuses by name. `/sheet` and bind still
 run on the 2B.
 Checkpoint: <https://huggingface.co/mattashiho/dango-1.8b-100Btok>
 (Shiho Matta et al.; code <https://github.com/mattashiho233/dango>).
-Put the snapshot at `models/dango-1.8b` so `GT_DANGO` matches `env.example.sh`:
+Put the snapshot at `models/dango-1.8b` so `GT_DANGO` matches `env.example.sh`.
+This is the specified Japanese organ. Do not swap it for an
+instruction-tuned 1.8B.
 
 ```sh
-# needs: pip install huggingface_hub   (or huggingface-cli)
-huggingface-cli download mattashiho/dango-1.8b-100Btok \
-  --local-dir models/dango-1.8b
+# Some huggingface_hub versions have no `python -m huggingface_hub download`.
+deps/venv/bin/pip install huggingface_hub
+deps/venv/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download('mattashiho/dango-1.8b-100Btok', local_dir='models/dango-1.8b')"
 ```
+
+The Leipzig glosser ships at `tagging-lab/gloss.py` (SudachiPy + JMdict
+lemma table). It is not a private ontology-midwife path. Install
+`sudachipy` and `sudachidict_core` into `deps/venv`. Leipzig is the
+middle of `/walk` (the stems are the shape of `@act` / `@path`). A
+missing gloss: `/walk` refuses by name. Talk can start; `/walk` cannot.
+Do not stub the file.
 
 Default engine is `llama-server` at `:8080`. Ollama is a permitted client for
 unmasked talk (`GT_OLLAMA`), not the architecture.
