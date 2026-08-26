@@ -35,6 +35,11 @@ export MODEL="$ROOT/models/granite-3.3-8b-Q4_K_M.gguf"
 # Beneath GGUF (:8081 sheet/bind/LOOK/hop). Second process. 2B on CPU so it
 # does not fight the 8B for VRAM. llama.cpp's job on CPU is system RAM.
 export MODEL_BENEATH="$ROOT/models/granite-3.3-2b-Q4_K_M.gguf"
+# If LLAMA_SERVER is CUDA-linked and the 8B already fills VRAM, NGL=0
+# on that same binary is not isolation. Point this at a GGML_CUDA=OFF
+# build (cmake without -DGGML_CUDA=ON). The launch script uses it when
+# PORT=8081. --device none is a fallback, not the named solve.
+# export LLAMA_SERVER_BENEATH="$ROOT/deps/llama.cpp-cpu/build/bin/llama-server"
 export GT_LLAMA="http://127.0.0.1:8080"
 export GT_WALK="http://127.0.0.1:8081"
 # Optional: /keep refuses until bind has spoken.

@@ -86,12 +86,17 @@ cp ../../llama-hook/gt-relied.cpp ../../llama-hook/gt-relied.h tools/server/
 cmake -B build -DGGML_CUDA=ON && cmake --build build -j --target llama-server
 # no GPU / typical VM (no passthrough):
 # cmake -B build && cmake --build build -j --target llama-server
+# second binary for beneath when the CUDA 8B already fills VRAM:
+# cmake -B build-cpu && cmake --build build-cpu -j --target llama-server
+# then LLAMA_SERVER_BENEATH=.../build-cpu/bin/llama-server
 ```
 
 RELIED is that patch plus `-fa off`. It is not a CUDA-only calculation.
 CPU builds emit the same fields if the hook is compiled in. GPU is for
-offload speed (8B). A VM without GPU access should use the CPU line and
-`NGL=0`.
+offload speed (8B). A VM without GPU access should use the CPU cmake
+line. If the **face** is the CUDA 8B filling VRAM, beneath is a
+**second** `GGML_CUDA=OFF` binary — `NGL=0` on the CUDA binary is not
+isolation (compute buffers still hit leftover VRAM).
 
 The patch adds the RELIED attention-mass hook to `tools/server/`. **You cannot
 substitute an unpatched `llama-server`**: `relied.py` and

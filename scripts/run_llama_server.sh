@@ -30,6 +30,12 @@ SERVER="$LLAMA_SERVER"
 PORT="${PORT:-8080}"
 CTX="${CTX:-8192}"
 NGL="${NGL:-99}"
+# Beneath on a CUDA-filled card: a second, GGML_CUDA=OFF binary.
+# NGL=0 on the hooked CUDA binary is not isolation (compute buffers
+# still land on leftover VRAM, then OOM).
+if [[ "$PORT" == "8081" && -n "${LLAMA_SERVER_BENEATH:-}" ]]; then
+  SERVER="$LLAMA_SERVER_BENEATH"
+fi
 
 EXTRA=()
 while [[ $# -gt 0 ]]; do

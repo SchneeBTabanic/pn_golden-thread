@@ -71,7 +71,9 @@ cp env.example.sh env.sh
 source env.sh               # load those paths into this terminal
 python3 run_tests.py        # no model, no server — fails by name if a seam is missing
 ./scripts/run_llama_server.sh
-# second terminal — beneath. CPU. Different GGUF. Never the talk face:
+# second terminal — beneath. CPU. Different GGUF and, if the face
+# is a CUDA 8B filling VRAM, a CPU-only llama-server binary
+# (LLAMA_SERVER_BENEATH). NGL=0 on the CUDA binary is not isolation.
 source env.sh
 NGL=0 PORT=8081 CTX=8192 MODEL="$MODEL_BENEATH" ./scripts/run_llama_server.sh
 python3 run.py
@@ -144,12 +146,18 @@ Talk:
 ```
 
 If the face is 8B on a GPU, **do not** put the 2B on VRAM as well.
-`NGL=0` on `:8081` is weights in system RAM. A CUDA-built
-`llama-server` still parks compute buffers on leftover VRAM unless
-the process is told `--device none` (the launch script adds that
-when `NGL=0`). `NGL` is not last-N. Last-N is `GT_SCORE_HISTORY`
-(unset = `raw`, a thread). `GT_SCORE_HISTORY=none` is lab isolation;
-do not set it for talk.
+`NGL=0` on a **CUDA-linked** `llama-server` is not isolation: weights
+stay in RAM, then the process still inits CUDA and OOM/segfaults on
+leftover VRAM (compute buffers). The named solve is a **second
+binary** built with `GGML_CUDA` off (`cmake -B build` with no
+`-DGGML_CUDA=ON`). Set `LLAMA_SERVER_BENEATH` to that binary; the
+launch script uses it when `PORT=8081`. `--device none` (added when
+`NGL=0`) is a fallback on the CUDA binary, not the isolation the
+sheet sitting named.
+
+`NGL` is not last-N. Last-N is `GT_SCORE_HISTORY` (unset = `raw`, a
+thread). `GT_SCORE_HISTORY=none` is lab isolation; do not set it for
+talk.
 
 A box with no GPU: `NGL=0` on **both** servers. The 2B at `:8081`
 still needs `-c 8192` so the **whole** `TAGS-gforth.md` fits. A
