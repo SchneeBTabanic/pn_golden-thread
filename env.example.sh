@@ -5,15 +5,18 @@
 # needs editing to relocate this build — if you find yourself editing a source
 # file to point it somewhere, stop and set the seam instead.
 #
-# The four marked REQUIRED are not optional: without them the test suite fails
-# named guards. That is not a broken clone, it is an unconfigured one.
+# The seams marked REQUIRED are not optional: without them the test suite
+# fails named guards. That is not a broken clone, it is an unconfigured one.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# --- REQUIRED: the two scribes (see DEPENDENCIES.md) -----------------------
+# --- REQUIRED: the gForth scribe (see DEPENDENCIES.md) ---------------------
 export GT_GF_SCRIBE="$ROOT/deps/scribe-workbench-gforth"          # REQUIRED
 export GT_TAG_SHEET="$GT_GF_SCRIBE/TAGS-gforth.md"                # REQUIRED
-export GT_SCRIBE="$ROOT/deps/scribe-workbench/scribe.py"          # REQUIRED
+
+# Optional: Python scribe, only for HTML url: reduction (capture_html).
+# Talk piles are gForth. Leave unset if you did not clone scribe-workbench.
+# export GT_SCRIBE="$ROOT/deps/scribe-workbench/scribe.py"
 
 # --- REQUIRED: the ratified law, shipped in this repo ----------------------
 export GT_LAW="$ROOT/law/GoldenThread-v1.6.2-Triune-Cathedral.json"

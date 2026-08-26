@@ -12,32 +12,31 @@ Start from `env.example.sh`: copy it to `env.sh`, edit the paths, `source env.sh
 
 ---
 
-## 1. The two scribes — REQUIRED
+## 1. The gForth scribe — REQUIRED
 
-Both are separate public repos. The runtime shells out to one and imports from
-the other; neither is vendored here, because both are published in their own
-right and duplicating them would create two copies of one truth.
+Talk piles are gForth format. Clone this repo; do not vendor it.
 
 | Need | Repo | Seam |
 |---|---|---|
 | gForth scribe (the pile runtime) | `SchneeBTabanic/scribe-workbench-gforth` | `GT_GF_SCRIBE` |
 | Tag sheet (read at runtime, not docs) | same repo, `TAGS-gforth.md` | `GT_TAG_SHEET` |
-| Python scribe (`capture_html`, `loss_check`) | `SchneeBTabanic/scribe-workbench` | `GT_SCRIBE` |
 
 ```sh
 mkdir -p deps && cd deps
 git clone git@github.com:SchneeBTabanic/scribe-workbench-gforth.git
-git clone git@github.com:SchneeBTabanic/scribe-workbench.git
 ```
 
 `pile_io.py` shells to the gForth leaves `pn-keep.fs`, `pn-gread.fs`,
 `pn-gindex.fs`. `path_stack.py` **reads** `TAGS-gforth.md` at runtime — it is
 working input, not documentation, and an absent sheet is a named refusal.
 
-Only `capture_html` and `loss_check` are used from the Python scribe.
+The Python scribe (`SchneeBTabanic/scribe-workbench`, `GT_SCRIBE`) is **not**
+required for talk. It is only `capture_html` / `loss_check` for HTML `url:`
+reduction. An unset `GT_SCRIBE` is a named refusal on that path, not a broken
+clone.
 
-**Without these four seams set, the suite fails six guards.** That is an
-unconfigured clone, not a broken one.
+**Without `GT_GF_SCRIBE` and `GT_TAG_SHEET`, the suite fails named guards.**
+That is an unconfigured clone, not a broken one.
 
 ## 2. gForth 0.7.3 — the interpreter
 

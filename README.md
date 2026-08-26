@@ -13,9 +13,9 @@ run offline.
 
 ## One online day — fetch everything you will need offline
 
-You need **this repo plus two scribe repos**, gForth, a **pinned**
+You need **this repo plus the gForth scribe**, gForth itself, a **pinned**
 llama.cpp, a Granite GGUF, and a Python venv. Latest llama.cpp will not
-do.
+do. The Python scribe is not required for talk.
 
 ```sh
 # 1. trees
@@ -23,7 +23,6 @@ git clone git@github.com:SchneeBTabanic/pn_golden-thread.git
 cd pn_golden-thread
 mkdir -p deps models
 git clone git@github.com:SchneeBTabanic/scribe-workbench-gforth.git deps/scribe-workbench-gforth
-git clone git@github.com:SchneeBTabanic/scribe-workbench.git deps/scribe-workbench
 
 # 2. system
 sudo apt install gforth pandoc poppler-utils build-essential cmake python3-venv python3-pip
@@ -73,3 +72,30 @@ when `GT_LAW` is unset. Default: not placed. `/withlaw` places the whole
 file.
 
 Packages, seams, and optional Dango: `DEPENDENCIES.md`.
+
+## What a clone will not have until you fetch it
+
+These are not in git. Miss them and the tree refuses by name, or talk
+works without RELIED — it does not silently use another machine's paths.
+
+1. **A Granite 3.3 GGUF is not in this repo.** On the online day download
+   one (2B Q4_K_M is enough to talk; 8B if you have VRAM), put it in
+   `models/`, set `MODEL=` in `env.sh`. The launch script exits if this
+   is unset.
+2. **CUDA is not an apt package here.** GPU build needs the toolkit you
+   actually have. CPU-only: cmake without `-DGGML_CUDA=ON`, and `NGL=0`
+   in `env.sh`.
+3. **`LLAMA_SERVER` and `MODEL` have no lab default.** Copy
+   `env.example.sh` to `env.sh` and source it. A leftover path from
+   another disk will not be guessed.
+4. **Flash attention must be off** (`-fa off`, already in the launch
+   script). If you start `llama-server` by hand and leave FA on, talk
+   still works; every RELIED reading is a named refusal.
+5. **The gForth scribe is a second clone**, not vendored. Talk piles
+   need `GT_GF_SCRIBE` and `GT_TAG_SHEET` pointing at
+   `scribe-workbench-gforth` (`TAGS-gforth.md` is working input). The
+   Python scribe is only for HTML `url:` reduction; talk does not need
+   it.
+
+A second CPU `llama-server` on `:8081` is this lab's sheet path, not
+part of the clone. One patched binary from the block above is enough.
