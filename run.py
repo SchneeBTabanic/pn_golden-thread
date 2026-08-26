@@ -337,7 +337,9 @@ HELP = """\
                           span. Off by default. llama-server only.
   /press off              dial and press together: refused.
   /pile                   this diary's path, genesis, and block count.
-  /views                  gForth toc on this pile (text driving).
+  /views                  minutes grouped (gForth toc). After /reset:
+                          names stamp and session-charter; no dump.
+  /views all              toc of the whole pile, including those two.
   /law                    titles only. Nothing is selected.
   /shape                  spoken resemblance. Last turn. Not a verdict.
   /shape key:value        the same, a gather you named.
@@ -1562,12 +1564,39 @@ class Talk:
             print("  /forget drops the model window, not this file.")
             print("  /views runs gForth toc on this pile (text driving).")
             return "loop"
-        if low == "/views":
+        if low == "/views" or low.startswith("/views "):
+            rest = msg.split(None, 1)[1].strip() if " " in msg.strip() else ""
+            if rest and rest != "all":
+                print("/views or /views all.")
+                return "loop"
             path = turn_record.turns_path()
             if not os.path.exists(path):
                 print("no turn pile yet")
                 return "loop"
-            print()
+            genesis, blocks = load_pile(path)
+            del genesis
+            clerk = turn_record.clerk_occupants(blocks)
+            want_all = rest == "all"
+            if (not want_all) and turn_record.minutes_absent(blocks):
+                print("/views: no minutes yet. This pile is clerk only.")
+                print()
+                for kind, off, extra in clerk:
+                    if kind == "stamp":
+                        print("  stamp at byte " + str(off)
+                              + " · genesis " + extra)
+                    else:
+                        print("  session-charter at byte " + str(off))
+                if not clerk:
+                    print("  (no blocks)")
+                print()
+                print("Those two are not a table of contents of talk.")
+                print("/views all  — gForth toc of the whole pile "
+                      "(including them).")
+                print("Talk, /keep, then /views groups the minutes.")
+                return "loop"
+            if want_all:
+                print("whole pile, including stamp and session-charter.")
+                print()
             try:
                 print(keys_of(path))
             except PileError as e:

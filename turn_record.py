@@ -95,6 +95,29 @@ def tag_first(block, key, default=""):
     return block.get("tagmap", {}).get(key, default)
 
 
+def clerk_occupants(blocks):
+    """Stamp and session-charter: clerk blocks, not minutes.
+
+    Named by declared identity (@genesis: on the stamp; @name:session-charter).
+    Not a rank of which law applies.
+    """
+    out = []
+    for b in blocks or []:
+        off = b.get("offset", 0)
+        gen = tag_first(b, "genesis")
+        if gen:
+            out.append(("stamp", off, gen))
+        elif tag_first(b, "name") == "session-charter":
+            out.append(("session-charter", off, ""))
+    return out
+
+
+def minutes_absent(blocks):
+    """True when the pile has no block beyond stamp and session-charter."""
+    blocks = list(blocks or [])
+    return len(clerk_occupants(blocks)) == len(blocks)
+
+
 def _hyphen(s):
     out = []
     for ch in (s or ""):

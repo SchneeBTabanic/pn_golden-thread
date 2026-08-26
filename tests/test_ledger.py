@@ -58,6 +58,15 @@ def run():
     os.environ["GT_TURN_PILE"] = pile
     try:
         turn_record.ensure_session()
+        _g, just_clerk = turn_record.load_pile(pile)
+        del _g
+        if not turn_record.minutes_absent(just_clerk):
+            fails.append("fresh pile must be stamp + session-charter only")
+        kinds = [k for k, _o, _e in turn_record.clerk_occupants(just_clerk)]
+        if kinds != ["stamp", "session-charter"]:
+            fails.append("clerk occupants drifted: " + repr(kinds))
+        if "minutes_absent" not in src or "/views all" not in src:
+            fails.append("run.py /views must name clerk-only and keep /views all")
         t1, g = turn_record.record_turn("one", "a", "bare")
         t2, g = turn_record.record_turn("two", "b", "bare")
         del t1, t2

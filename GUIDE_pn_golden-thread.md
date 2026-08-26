@@ -321,6 +321,7 @@ Commercial UIs treat every user sentence as a prompt to complete.
 /reset [reason]
 /pile
 /views
+/views all
 ```
 
 `/history` is a derived view of last-N for you. Standing default also
@@ -338,10 +339,13 @@ revises, isolated); `a` and `b` are 1-based seats in that list.
 destroyed. `/pile` shows path, genesis, and block count.
 
 `/views` is gForth `g-toc` on this pile — text driving, tag values that
-gathered more than one block versus values that stand alone. A pile
-where everything stands alone is telling you either that every reach is
-distinct, or that you have spelled one thing three ways. Read the
-scribe guide’s “NOT shown by this index” habit: the line names keys
+gathered more than one block versus values that stand alone. After
+`/reset` the pile is stamp plus session-charter; `/views` **names those
+two and stops**. That occupancy is not a table of contents of talk.
+`/views all` is the five-axis toc of the whole file, including them. A
+pile where everything stands alone is telling you either that every
+reach is distinct, or that you have spelled one thing three ways. Read
+the scribe guide’s “NOT shown by this index” habit: the line names keys
 you did *not* ask about.
 
 This is the answer to “the window rolled and now the model is
