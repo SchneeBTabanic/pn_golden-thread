@@ -159,6 +159,10 @@ file.
 
 Packages, seams, and optional Dango: `DEPENDENCIES.md`.
 
+How to move inside a sitting (posture, commands, bind, speculative
+trajectory): `GUIDE_pn_golden-thread.md`. Setup stays here. The tag lab
+stays in `scribe-workbench-gforth`.
+
 ## What a clone will not have until you fetch it
 
 These are not in git. Miss them and the tree refuses by name, or talk

@@ -159,5 +159,7 @@ the build record. Deliberately absent, and named rather than pretended away:
   Until you do, `show_docs.py` refuses by name, which is the intended behaviour.
 - `tests/sovereign-test_terminal-output_*.txt`, `BRIEF_sovereign-test_*` —
   transcripts and findings briefs.
-- `AGENTS.md`, `.grok/piles/*`, the Design Charter, `GUIDE_*`, `user-guide_*`,
-  and `GUIDE_derived_*` files. They are not in this tree.
+- `AGENTS.md`, `.grok/piles/*`, the Design Charter, `user-guide_*`,
+  `GUIDE_derived_*`, and the old `GUIDE_*_for_Dummies` files. They are
+  not in this tree. The posture guide that *is* published is
+  `GUIDE_pn_golden-thread.md`.
