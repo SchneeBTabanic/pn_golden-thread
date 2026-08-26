@@ -22,6 +22,7 @@ SUITES = [
     "tests/test_walk.py",
     "tests/test_path_stack.py",
     "tests/test_sheet.py",
+    "tests/test_bind.py",
     "tests/test_turn_record.py",
     "tests/test_backend.py",
     "tests/test_skin.py",
@@ -168,6 +169,8 @@ def _guard_path_is_not_substring():
         fails.append("/keep (judge the proposal) is missing")
     if "beneath=True" not in run_src:
         fails.append("/sheet must measure the beneath window, not the face")
+    if run_src.count("beneath=True") < 2:
+        fails.append("LOOK and /sheet must both measure the beneath window")
     sheet_fn = model_src.split("def sheet(", 1)[1].split("def walker(", 1)[0]
     if "walk_up" not in sheet_fn and "WALK" not in sheet_fn:
         fails.append("sheet() must POST to :8081, never the face")

@@ -30,6 +30,7 @@ MOUTHS = (
     "fetch", "search", "html",
     "refuse-fetch", "refuse-search", "refuse-html",
     "sheet",
+    "bind",
     "ask", "closed-ask", "revises", "reset",
 )
 
@@ -324,6 +325,17 @@ def record_walk(speech, accepted, refused, ref_id=""):
     tags.append(("part", "walk"))
     for pair in accepted:
         tags.append(pair)
+    if ref_id:
+        tags.append(("ref", _ref_tag(ref_id)))
+    return capture_append(turns_path(), body, tags, source="runtime")
+
+
+def record_bind(speech, ref_id=""):
+    """Bind speech on its own block. No @act/@path. Not a keep/refuse."""
+    ensure_session()
+    body = f"BIND:\n{speech}"
+    tags = _minutes("bind", "ai", "bind", "bind")
+    tags.append(("part", "bind"))
     if ref_id:
         tags.append(("ref", _ref_tag(ref_id)))
     return capture_append(turns_path(), body, tags, source="runtime")

@@ -419,7 +419,7 @@ def granite_l2_tags(japanese, gloss):
     user += "\n\n[GLOSS]\n" + (gloss or "")
     if stems:
         user += "\n\n[GLOSS STEMS — what the Japanese said]\n" + ", ".join(stems)
-    return model.look(GRANITE_L2_SYSTEM, user)
+    return model.face(GRANITE_L2_SYSTEM, user)
 
 
 def run_gloss(japanese):

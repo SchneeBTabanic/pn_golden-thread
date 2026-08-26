@@ -348,11 +348,22 @@ def comment(system_prompt, user_prompt):
                      temperature=0.2).strip()
 
 
-def look(system_prompt, user_prompt):
-    """Leftover speech against a declared path. Not a tag. Not a switch."""
+def face(system_prompt, user_prompt, max_tokens=None, temperature=0.2):
+    """Face only. Inquire and bearings. Not LOOK, not sheet, not bind."""
     prompt = _as_chat(system_prompt, user_prompt)
-    return _complete(prompt, COMMENT_MAX_TOKENS, grammar=None,
-                     temperature=0.2).strip()
+    return _complete(prompt, max_tokens or COMMENT_MAX_TOKENS, grammar=None,
+                     temperature=temperature).strip()
+
+
+def look(system_prompt, user_prompt):
+    """Leftover speech against a declared path. Hits GT_WALK. Never the face."""
+    if not walk_up():
+        raise ServerDown(
+            f"No beneath server at {WALK}. Start the CPU 2B there. "
+            f"The face at {LLAMA} was not asked to look.")
+    prompt = _as_chat(system_prompt, user_prompt)
+    return _complete_llama(WALK, prompt, COMMENT_MAX_TOKENS, grammar=None,
+                           temperature=0.2).strip()
 
 
 def sheet(system_prompt, user_prompt):
@@ -375,3 +386,8 @@ def walker(system_prompt, user_prompt):
     prompt = f"{system_prompt}\n\n{user_prompt}\n"
     return _complete_llama(WALK, prompt, WALK_TOKENS, grammar=None,
                            temperature=0.1).strip()
+
+
+def bind(system_prompt, user_prompt):
+    """Bind a /sheet proposal to the face turn. Same HTTP as walker. Never the face."""
+    return walker(system_prompt, user_prompt)

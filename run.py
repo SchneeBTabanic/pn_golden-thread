@@ -122,6 +122,33 @@ SHEET_SYSTEM = (
     "Do not score. Do not file. Do not continue as the face.\n"
 )
 
+BIND_SYSTEM = (
+    "You are the record's binder, not the face, not the clerk.\n"
+    "You are shown one face turn (asked and answered), the tag lines\n"
+    "proposed for that turn, and the researched tag sheet.\n"
+    "\n"
+    "@act is a doing that transforms from within. @path is a reaching\n"
+    "(a live direction and two real words, or a named empty).\n"
+    "The two named empties are not-yet-discerned and ruled-none.\n"
+    "Only a person may assert which empty it is.\n"
+    "\n"
+    "In ordinary sentences, say:\n"
+    "- whether each proposed @act still names a doing IN THIS ANSWER,\n"
+    "  or is verb-clothing on a subject-label, or is sheet-atmosphere;\n"
+    "- whether each proposed @path still reaches FROM THIS ANSWER,\n"
+    "  or was borrowed from the sheet and does not touch the answer;\n"
+    "- if you cannot tell, say so.\n"
+    "\n"
+    "Do not score. Do not rank. Do not call this a verdict.\n"
+    "Do not file. Do not rewrite the proposal into new @lines\n"
+    "unless you explicitly say you are inventing a witness\n"
+    "and that the human must still judge it.\n"
+    "Do not walk every key. Do not continue as the face.\n"
+    "Do not tell the human to keep or to refuse.\n"
+)
+
+BIND_ABSENT = "BIND: not spoken this keep — syntactic proposal only"
+
 def _load(path, what):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -284,11 +311,13 @@ HELP = """\
   /walk                   summon Japanese + gloss on the last turn.
                           Proposed tags are shown and not filed. Slow
                           the first time. Talk does not wait for this.
-  /sheet                  summon the tag sheet on the last turn (not the
-                          face). Propose tags. Shown, not filed.
-  /keep                   file the last /sheet proposal you judged. You
-                          are the judge. The clerk copies; it does not
-                          invent. Needs /sheet first.
+  /sheet                  propose tags on the last turn (beneath), then
+                          bind them to the face answer. Shown, not filed.
+  /bind                   bind the last /sheet proposal to the face turn
+                          again. Needs /sheet first. Speech, not a verdict.
+  /keep                   file the last /sheet proposal you judged. Files
+                          the bind speech with it, or names that bind was
+                          absent. The clerk copies; it does not invent.
   /comment                ask what the last record is for. Body only.
                           No tag. You are not asked to write one.
   /raw                    the whole unsplit model output
@@ -435,7 +464,7 @@ def _run_inquire(start, end):
             + "\nReply with the number or STOP."
         )
         try:
-            speech = model.look(INQUIRE_SYSTEM, user)
+            speech = model.face(INQUIRE_SYSTEM, user)
         except model.ServerDown as e:
             trail.append("stop: model missed (" + str(e) + ")")
             break
@@ -768,7 +797,8 @@ def summon_look(declared, sequel):
             print(f"LOOK: Dango did not answer ({e}).", file=sys.stderr)
             sys.stderr.flush()
             dango_part = f"DANGO: did not answer ({e})"
-    refuse, sheet = _sheet_window_refuse(declared, sequel, LOOK_SYSTEM)
+    refuse, sheet = _sheet_window_refuse(
+        declared, sequel, LOOK_SYSTEM, beneath=True)
     if refuse:
         print(refuse, file=sys.stderr)
         body = (dango_part + "\n\n" if dango_part else "") + refuse
@@ -804,7 +834,7 @@ class Step:
 
 
 _SUMMON_TABS = (
-    "/walk", "/sheet", "/keep", "/comment", "/shape", "/probe",
+    "/walk", "/sheet", "/bind", "/keep", "/comment", "/shape", "/probe",
     "/views", "/history",
     "/fold", "/open", "/inquire", "/bearings", "/reset",
     "/help", "/held", "/sequel", "/raw", "/pile", "/law", "/declared",
@@ -828,6 +858,8 @@ class Talk:
         self.last_sequel = ""
         self.last_walk = ""
         self.last_proposal = ""
+        self.last_bind = ""
+        self.last_walk_turn_id = ""
         self.skin_on = False
         self.law_ref = ""
         self.dial_alpha = None
@@ -859,6 +891,8 @@ class Talk:
         info = model.loaded_model()
         self.turn_n, self.last_raw, self.last_turn_id = 0, "", ""
         self.last_sequel, self.last_walk, self.last_proposal = "", "", ""
+        self.last_bind = ""
+        self.last_walk_turn_id = ""
         self.skin_on = False
         self.law_ref = ""
         self.dial_alpha = None
@@ -888,10 +922,44 @@ class Talk:
         else:
             print("/walk is not ready (Dango or gloss missing). Talk still works.")
         print("/comment asks what the last record is for. Body only. No tag.")
-        print("/sheet summons the tag sheet on the last turn (CPU 2B :8081, not the face).")
-        print("/keep files the last /sheet proposal you judged.")
+        print("/sheet proposes on the last turn then binds on the 2B at :8081 (not the face).")
+        print("/bind re-runs that bind. /keep files the proposal you judged, and names bind if it was silent.")
 
         return 0
+
+    def _bind_after_sheet(self, asked, answered, genesis, last):
+        """Second POST on :8081. Proposal already printed. Does not file."""
+        proposal = self.last_proposal or ""
+        extra = BIND_SYSTEM + "\n" + proposal
+        refuse, sheet = _sheet_window_refuse(
+            asked, answered, extra, beneath=True)
+        if refuse:
+            self.last_bind = ""
+            print(refuse)
+            print("BIND: " + refuse, file=sys.stderr)
+            return
+        user = sheet + "\n\n"
+        user += "[ASKED]\n" + (asked or "") + "\n\n"
+        user += "[ANSWERED]\n" + (answered or "") + "\n\n"
+        user += "[PROPOSAL]\n" + proposal + "\n"
+        turn_id = turn_record.traveling_name(genesis, last)
+        if (self.last_walk and self.last_walk_turn_id
+                and self.last_walk_turn_id == turn_id):
+            user += "\n[WALK — reveal, not a verdict]\n" + self.last_walk + "\n"
+        print("BIND: summoned — 2B reads the proposal against the face.",
+              file=sys.stderr)
+        sys.stderr.flush()
+        try:
+            speech = model.bind(BIND_SYSTEM, user)
+        except model.ServerDown as e:
+            self.last_bind = ""
+            print("BIND: " + str(e))
+            print("BIND: " + str(e), file=sys.stderr)
+            return
+        self.last_bind = speech or ""
+        print()
+        print(self.last_bind or "(empty bind)")
+        print("BIND: spoken", file=sys.stderr)
 
     def handle(self, msg):
         if not msg:
@@ -1028,6 +1096,8 @@ class Talk:
             self.turn_n = 0
             self.pending_revises = None
             self.last_proposal = ""
+            self.last_bind = ""
+            self.last_walk_turn_id = ""
             print("reset. old pile kept: " + old)
             print("new pile: " + new)
             return "loop"
@@ -1075,7 +1145,7 @@ class Talk:
             print()
             print("── bearings (one call on the recap — not a chain) ──")
             try:
-                speech = model.look(BEARINGS_SYSTEM, recap)
+                speech = model.face(BEARINGS_SYSTEM, recap)
             except model.ServerDown as e:
                 print("(model missed; the recap above is the whole answer)")
                 print(str(e))
@@ -1155,6 +1225,7 @@ class Talk:
                 asked, answered,
                 written_act=written_act, written_path=written_path)
             self.last_walk = path_stack.stack_as_walk_text(rep)
+            self.last_walk_turn_id = turn_record.traveling_name(genesis, last)
             print()
             print(self.last_walk)
             try:
@@ -1176,6 +1247,7 @@ class Talk:
             if refuse:
                 print(refuse)
                 self.last_proposal = ""
+                self.last_bind = ""
                 return "loop"
             user = sheet + "\n\n"
             user += "[THIS TURN — not the face]\n"
@@ -1195,13 +1267,29 @@ class Talk:
             self.last_proposal = speech or ""
             print()
             print(speech or "(empty sheet)")
-            print("SHEET: shown, not filed. Type /keep if you judge it.",
-                  file=sys.stderr)
+            print("SHEET: shown, not filed.", file=sys.stderr)
+            self._bind_after_sheet(asked, answered, genesis, last)
+            return "loop"
+        if low == "/bind":
+            if not (self.last_proposal or "").strip():
+                print("/bind needs a /sheet proposal first.")
+                return "loop"
+            genesis, last = turn_record.last_turn()
+            if last is None:
+                print("/bind needs a completed turn.")
+                return "loop"
+            asked = turn_record.field(last["body"], "ASKED")
+            answered = turn_record.field(last["body"], "ANSWERED")
+            self._bind_after_sheet(asked, answered, genesis, last)
             return "loop"
         if low == "/keep":
             if not (self.last_proposal or "").strip():
                 print("/keep needs a /sheet proposal first.")
                 return "loop"
+            if (os.environ.get("GT_BIND_REQUIRED") or "").strip() == "1":
+                if not (self.last_bind or "").strip():
+                    print("KEEP: REFUSED — bind has not spoken (GT_BIND_REQUIRED=1).")
+                    return "loop"
             genesis, last = turn_record.last_turn()
             if last is None:
                 print("/keep needs a completed turn.")
@@ -1214,13 +1302,21 @@ class Talk:
                 print("KEEP: no @key:value lines accepted.")
             if refused:
                 print("KEEP refused: " + "; ".join(refused))
+            ref_id = turn_record.traveling_name(genesis, last)
+            bind_speech = (self.last_bind or "").strip()
+            if bind_speech:
+                print("KEEP: proposal filed · BIND spoken")
+            else:
+                bind_speech = BIND_ABSENT
+                print("KEEP: proposal filed · BIND absent")
             try:
                 turn_record.record_sheet(
-                    self.last_proposal, accepted, refused,
-                    ref_id=turn_record.traveling_name(genesis, last))
+                    self.last_proposal, accepted, refused, ref_id=ref_id)
+                turn_record.record_bind(bind_speech, ref_id=ref_id)
             except PileError as e:
                 print(f"turn pile refused the sheet keep: {e}", file=sys.stderr)
             self.last_proposal = ""
+            self.last_bind = ""
             return "loop"
         if low == "/comment":
             genesis, last = turn_record.last_turn()

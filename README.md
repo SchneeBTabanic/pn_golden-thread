@@ -141,6 +141,13 @@ CPU-only: `NGL=0` on both. The 2B at `:8081` needs `-c 8192` so the **whole**
 `TAGS-gforth.md` fits. A live-core is not the sheet; this summons will not
 amputate it.
 
+`/sheet` uses that 2B twice: first it proposes `@act` / `@path` lines, then
+it **binds** — ordinary sentences asking whether those lines still name a
+doing *in this face answer*, or are clothing. Shown, not filed. `/bind`
+re-runs only the second pass. `/keep` files the proposal you judged and
+files the bind speech (or names that bind was silent). Python does not
+score the bind. `!path` LOOK also POSTs to `:8081`, not the face.
+
 `run_llama_server.sh` **requires** `LLAMA_SERVER` and `MODEL`. It passes
 `-fa off`. If flash attention stays on, talk still works; every RELIED
 reading is a named refusal (`saw_softmax` never becomes true).

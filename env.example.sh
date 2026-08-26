@@ -32,10 +32,12 @@ fi
 # --- the patched llama.cpp server (patches/ + llama-hook/) -----------------
 export LLAMA_SERVER="$ROOT/deps/llama.cpp/build/bin/llama-server"
 export MODEL="$ROOT/models/granite-3.3-2b-Q4_K_M.gguf"
-# Face is :8080 (run.py talk). /sheet POSTs to :8081 — a second process,
-# same binary, 2B GGUF, CTX=8192 so the whole TAGS-gforth.md fits.
+# Face is :8080 (run.py talk). /sheet then /bind POST to :8081 — same
+# 2B process, CTX=8192 so the whole TAGS-gforth.md fits. LOOK too.
 export GT_LLAMA="http://127.0.0.1:8080"
 export GT_WALK="http://127.0.0.1:8081"
+# Optional: /keep refuses until bind has spoken.
+# export GT_BIND_REQUIRED=1
 
 # GPU offload. CPU-only build: export NGL=0
 export NGL="${NGL:-99}"
