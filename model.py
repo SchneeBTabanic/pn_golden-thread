@@ -28,6 +28,7 @@ PROBE_TEMPERATURE = 0.0
 PROBE_SEED = int(os.environ.get("GT_PROBE_SEED", "0"))
 SHAPE_MAX_TOKENS = int(os.environ.get("GT_SHAPE_TOKENS", "220"))
 COMMENT_MAX_TOKENS = int(os.environ.get("GT_COMMENT_TOKENS", "280"))
+SHEET_MAX_TOKENS = int(os.environ.get("GT_SHEET_TOKENS", "400"))
 WALK_TOKENS = int(os.environ.get("GT_WALK_TOKENS", "400"))
 
 
@@ -86,6 +87,21 @@ def backend():
 
 def health():
     return backend() is not None
+
+
+def walk_props():
+    """Asked of the beneath server (:8081), never of the face."""
+    if not walk_up():
+        return {"backend": None, "n_ctx": None, "model": None}
+    try:
+        d = _http_json(f"{WALK}/props", timeout=5)
+    except ServerDown:
+        return {"backend": "llama-server", "model": "(props failed)",
+                "n_ctx": None}
+    path = (d.get("model_path")
+            or d.get("default_generation_settings", {}).get("model"))
+    n_ctx = d.get("default_generation_settings", {}).get("n_ctx")
+    return {"backend": "llama-server", "model": path, "n_ctx": n_ctx}
 
 
 def loaded_model():
@@ -337,6 +353,17 @@ def look(system_prompt, user_prompt):
     prompt = _as_chat(system_prompt, user_prompt)
     return _complete(prompt, COMMENT_MAX_TOKENS, grammar=None,
                      temperature=0.2).strip()
+
+
+def sheet(system_prompt, user_prompt):
+    """Summoned sheet-reading. Hits GT_WALK (:8081). Never the face."""
+    if not walk_up():
+        raise ServerDown(
+            f"No beneath server at {WALK}. Start the CPU 2B there. "
+            f"The face at {LLAMA} was not asked to sheet.")
+    prompt = _as_chat(system_prompt, user_prompt)
+    return _complete_llama(WALK, prompt, SHEET_MAX_TOKENS, grammar=None,
+                           temperature=0.2).strip()
 
 
 def walker(system_prompt, user_prompt):

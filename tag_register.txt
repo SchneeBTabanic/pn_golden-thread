@@ -9,7 +9,7 @@ path             witness    *
 aspect           grouping   manifested,manifesting,prospective
 origin           grouping   human,ai
 because          grouping   misread,parser-wrong,ruling,fix-elsewhere
-kept             grouping   pedagogy,foundation,evidence,specimen
+kept             grouping   evidence,specimen,pedagogy,resonance
 source           witness    *
 attests          witness    *
 touched          witness    *

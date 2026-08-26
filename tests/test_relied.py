@@ -166,6 +166,31 @@ def run():
         covered = "".join(char_tok(full)[a:b])
         if covered != body:
             fails.append("span did not exactly cover the body: " + repr(covered))
+    if relied.ASKED_SPAN != "asked":
+        fails.append("ASKED_SPAN drifted: " + repr(relied.ASKED_SPAN))
+    twice = "Q?\nFILE quotes Q?\nQ?"
+    first = relied.token_range(twice, "Q?", char_tok)
+    last = relied.token_range_last(twice, "Q?", char_tok)
+    if first is None or last is None:
+        fails.append("asked span range missed")
+    elif first == last:
+        fails.append("token_range_last did not prefer the live line")
+    elif last[0] <= first[0]:
+        fails.append("last asked span was not after the first: "
+                     + repr((first, last)))
+    spans_first = relied.spans_for_hook(
+        twice, [("asked", "Q?")], char_tok)
+    spans_last = relied.spans_for_hook(
+        twice, [("asked", "Q?")], char_tok, last_ids=("asked",))
+    if not spans_first or not spans_last:
+        fails.append("spans_for_hook missed asked")
+    elif spans_first[0]["start"] == spans_last[0]["start"]:
+        fails.append("last_ids did not move the asked span")
+    run_src = open(os.path.join(HERE, "run.py"), encoding="utf-8").read()
+    if "relied.ASKED_SPAN" not in run_src:
+        fails.append("face does not name the asked span")
+    if "last_ids=asked_last" not in run_src:
+        fails.append("asked span is not located at last occurrence")
     tag = relied.relied_tag_value("辻1016#42/99", 0.71)
     if " " in tag:
         fails.append("relied tag value has a space: " + tag)

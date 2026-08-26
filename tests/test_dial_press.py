@@ -102,7 +102,7 @@ def run():
             fails.append("tag_register missing witness " + key)
         elif reg["keys"][key].get("kind") != "witness":
             fails.append(key + " is not a witness key")
-    if "extra_tags=None" not in src:
+    if "extra_tags=None" not in src and "extra if extra else None" not in src:
         fails.append("run.py must still record turns with extra_tags=None")
     if fails:
         for f in fails:

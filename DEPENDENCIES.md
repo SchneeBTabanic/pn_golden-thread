@@ -151,7 +151,5 @@ the build record. Deliberately absent, and named rather than pretended away:
   Until you do, `show_docs.py` refuses by name, which is the intended behaviour.
 - `tests/sovereign-test_terminal-output_*.txt`, `BRIEF_sovereign-test_*` —
   transcripts and findings briefs.
-- `AGENTS.md`, `.grok/piles/*`, the Design Charter, the `GUIDE_*_for_Dummies`
-  and `user-guide_*` files. The project README mentions some of these; they are
-  not in this tree, and that absence is declared here rather than edited out of
-  the file that mentions them.
+- `AGENTS.md`, `.grok/piles/*`, the Design Charter, `GUIDE_*`, `user-guide_*`,
+  and `GUIDE_derived_*` files. They are not in this tree.

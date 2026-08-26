@@ -37,6 +37,25 @@ def run():
         fails.append("tag sheet lost live-core meanings")
     if "\n## 3." in sheet:
         fails.append("live core included the whole sheet (too big for the 8B)")
+    beneath = path_stack.tag_sheet_beneath()
+    if "TAG SHEET ABSENT" in beneath or "TAG SHEET EMPTY" in beneath:
+        fails.append("beneath sheet missing")
+    if "\n## 3." not in beneath or "\n## 5." not in beneath:
+        fails.append("beneath must be the whole sheet, not a live-core")
+    if "No live-core" not in beneath:
+        fails.append("beneath must say it is not a live-core")
+    if "SHEET CUT" in beneath:
+        fails.append("beneath must not designer-cut the sheet")
+    if "Walk every key" in beneath:
+        fails.append("beneath revived the register-as-menu walk")
+    whole = path_stack.tag_sheet_text()
+    ok4, need4, _c4 = path_stack.sheet_fits_ctx(4096, whole, "asked", "answered")
+    if ok4:
+        fails.append("4096 ctx must not pretend to hold the whole sheet")
+    ok8, _n8, _c8 = path_stack.sheet_fits_ctx(8192, whole, "asked", "answered")
+    if not ok8:
+        fails.append("8192 ctx should hold the whole sheet on this budget: need "
+                     + str(need4))
     if "Walk every key" in runmod.LOOK_SYSTEM:
         fails.append("LOOK_SYSTEM revived the register-as-menu walk")
     src_stack = open(os.path.join(HERE, "path_stack.py"), encoding="utf-8").read()

@@ -20,6 +20,7 @@ THREE ACTS (do not merge):
 """
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -34,15 +35,32 @@ from pile_io import (                                     # noqa: E402
     PileError, export_selector, keys_of, load_pile, toc_by,
 )
 from tape import (                                          # noqa: E402
-    is_training_loop_line, parse_bang_path, parse_hold_line,
-    should_file_sequel, split_tape,
+    is_training_loop_line, parse_ask_line, parse_bang_path,
+    parse_closed_line, parse_hold_line, parse_revises_line,
+    parse_score_place, should_file_sequel, split_tape,
 )
 import path_stack                                         # noqa: E402
 import relied                                             # noqa: E402
 import web                                                # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-HISTORY_TURNS = int(os.environ.get("GT_HISTORY_TURNS", "4"))
+HISTORY_TURNS = int(os.environ.get("GT_HISTORY_TURNS", "6"))
+
+
+def standing_history_mode():
+    """GT_SCORE_HISTORY: none | fold | raw. Default raw (talk). Unknown → none.
+
+    none is lab isolation, not the talk default. Seclusion gate: a face
+    that cannot keep a thread is unusable. Unknown stays none so a typo
+    does not silently pick a mode.
+    """
+    raw = os.environ.get("GT_SCORE_HISTORY")
+    if raw is None or not str(raw).strip():
+        return "raw"
+    v = str(raw).strip().lower()
+    if v in ("none", "fold", "raw"):
+        return v
+    return "none"
 DEFAULT_STORY = os.path.join(HERE, "piles", "story.txt")
 
 SHAPE_SYSTEM = (
@@ -75,6 +93,33 @@ LOOK_SYSTEM = (
     "If you cannot tell, say so.\n"
     "Do not score. Do not call this a verdict. Do not continue the leftover "
     "as more questions.\n"
+)
+
+INQUIRE_SYSTEM = (
+    "You pick one move from the menu. The menu is the only truth.\n"
+    "Reply with the number, or STOP. Do not invent a connection.\n"
+    "One short reason sentence after the number is allowed.\n"
+)
+
+BEARINGS_SYSTEM = (
+    "You are shown a deterministic recap of facts the human already asserted.\n"
+    "Speak in five short labeled parts: Current bearings; Living thread; "
+    "Most recent revision; Outstanding uncertainty; One next question.\n"
+    "Reuse the recap's ONE NEXT line for that last part when it names an ask.\n"
+    "Do not invent edges. Do not summarise a chain of model guesses. "
+    "If the recap is thin, say so.\n"
+)
+
+SHEET_SYSTEM = (
+    "You are the record's beneath, not the face. You are shown one turn "
+    "and the researched tag sheet.\n"
+    "Use those meanings. Do not walk every key. Do not pick tags from a "
+    "menu. @act is a doing; @path is a reaching.\n"
+    "Propose only the seats this turn needs, as lines of the form "
+    "@key:hyphenated-value (no spaces).\n"
+    "If no seat fits, say so. Invent a witness key only then, and say you "
+    "invented it. @ref is salience (this belongs with that), not a menu.\n"
+    "Do not score. Do not file. Do not continue as the face.\n"
 )
 
 def _load(path, what):
@@ -211,14 +256,39 @@ HELP = """\
                           capture --html (pandoc). Or refuse.
   !path words             leftover speech is shown and filed. A second
                           span looks at it. Python does not score a match.
-  /history                what the model will be shown next (your last few
-                          real questions and first answers only)
-  /history key:value      the same, only turns carrying that tag
+  /history                last-N as a derived view for you.
+                          Standing default also places it in the face
+                          (raw, divider family). GT_SCORE_HISTORY=none is lab.
+  /history key:value      the same view, only turns carrying that tag
+  ^                       this turn: place a clerk fold of last-N
+  ^^                      this turn: place raw last-N (ASKED/ANSWERED)
+  /fold                   print a clerk recap of last-N. No model call.
+  /fold a b               articulate seats a..b after /forget (asks,
+                          revises, isolated). No model. a and b are
+                          1-based seats in that list.
+  !ask question           open a burning question. Only you close it.
+                          Not a hold. Not put in the face window.
+  /open                   list open !ask questions.
+  !closed n|ref           close an open ask. n is the /open index.
+  /revises n|ref          next turn re-frames that turn. Optional
+                          rejected:"..." expanded:"..." narrowed:"..."
+                          invariant:"..." — those four keys only.
+  /inquire a b            walk asserted revises edges backward in
+                          seats a..b. One model pick per step from a
+                          Python menu. No invented edge.
+  /bearings a b           one model call on the /fold a b recap only.
+                          Never a chain. Never fed /inquire's speech.
+  /reset [reason]         new empty pile. Old pile is kept.
   /forget                 start the next answers fresh. The diary is kept.
   /sequel                 leftover extra speech from the last answer
   /walk                   summon Japanese + gloss on the last turn.
                           Proposed tags are shown and not filed. Slow
                           the first time. Talk does not wait for this.
+  /sheet                  summon the tag sheet on the last turn (not the
+                          face). Propose tags. Shown, not filed.
+  /keep                   file the last /sheet proposal you judged. You
+                          are the judge. The clerk copies; it does not
+                          invent. Needs /sheet first.
   /comment                ask what the last record is for. Body only.
                           No tag. You are not asked to write one.
   /raw                    the whole unsplit model output
@@ -255,6 +325,9 @@ LIVE_MOUTH = "── live mouth (the human's question now) ──"
 PRIOR_RECORD_END = (
     "── end of that record (not the line just typed) ──"
 )
+FOLD_RECORD = (
+    "── placed fold (clerk recap of last turns — not the line just typed) ──"
+)
 
 
 def prior_record_slab(blocks):
@@ -276,19 +349,161 @@ def prior_record_slab(blocks):
     return "\n\n".join(parts)
 
 
+def fold_recap(genesis, blocks):
+    """Clerk minutes of last-N. No model. Not ASKED/ANSWERED chat labels."""
+    parts = [FOLD_RECORD]
+    if not blocks:
+        parts.append("(no turns in the diary window)")
+        return "\n".join(parts)
+    n = 0
+    for b in blocks:
+        n += 1
+        name = turn_record.traveling_name(genesis, b)
+        asked = (turn_record.field(b["body"], "ASKED") or "").strip()
+        answered = (turn_record.field(b["body"], "ANSWERED") or "").strip()
+        parts.append(
+            str(n) + ". " + name + " — asked: " + asked
+            + "\n   answered: " + answered
+        )
+    return "\n".join(parts)
+
+
+def _parse_span(bits):
+    """bits[0] is the command. Need two integers."""
+    if len(bits) != 3:
+        return 0, 0, "need two seat numbers (1-based, after /forget)"
+    try:
+        start = int(bits[1])
+        end = int(bits[2])
+    except ValueError:
+        return 0, 0, "seats must be integers"
+    if start < 1 or end < start:
+        return 0, 0, "range must be 1 <= a <= b"
+    return start, end, ""
+
+
+def _open_asks_slab():
+    genesis, asks = turn_record.active_asks()
+    if not asks:
+        return ""
+    lines = [
+        "[OPEN ASKS — human, still burning. Not the turn. Not a menu.]"
+    ]
+    for i, a in enumerate(asks, 1):
+        tes = (turn_record.field(a["body"], "ASK") or "").split("\n", 1)[0]
+        name = turn_record.traveling_name(genesis, a)
+        lines.append(str(i) + ". " + name + "  " + tes)
+    return "\n".join(lines)
+
+
+def _first_int_token(text):
+    for tok in (text or "").replace(".", " ").replace(",", " ").split():
+        if tok.isdigit():
+            return int(tok)
+    return None
+
+
+def _run_inquire(start, end):
+    """Asserted edges only. One model pick per step. Never a chain of guesses."""
+    recap, err = turn_record.fold_articulate(start, end)
+    del recap
+    if err:
+        return err
+    genesis, turns = turn_record.gather_turns(0)
+    span = turns[start - 1:end]
+    if not span:
+        return "inquire: empty span"
+    cur = span[-1]
+    visited = set()
+    trail = ["── inquire (menu picks — asserted edges only) ──"]
+    for _step in range(5):
+        name = turn_record.traveling_name(genesis, cur)
+        if name in visited:
+            trail.append("stop: already visited " + name)
+            break
+        visited.add(name)
+        moves = turn_record.inquire_moves(cur)
+        if not moves:
+            trail.append(name + " — no asserted edge. Honest stop.")
+            break
+        menu = []
+        for i, (kind, ref) in enumerate(moves, 1):
+            menu.append(str(i) + ". " + kind + " " + ref)
+        user = (
+            "Current turn: " + name + "\n"
+            "Moves (only these exist):\n" + "\n".join(menu)
+            + "\nReply with the number or STOP."
+        )
+        try:
+            speech = model.look(INQUIRE_SYSTEM, user)
+        except model.ServerDown as e:
+            trail.append("stop: model missed (" + str(e) + ")")
+            break
+        pick = _first_int_token(speech or "")
+        low = (speech or "").strip().lower()
+        if low.startswith("stop") or pick is None:
+            trail.append("stop: no menu pick.")
+            break
+        if pick < 1 or pick > len(moves):
+            trail.append("stop: pick not on the menu.")
+            break
+        kind, ref = moves[pick - 1]
+        trail.append(name + " --" + kind + "--> " + ref)
+        _g, nxt, _n = turn_record.resolve_turn_seat(ref)
+        del _g, _n
+        if nxt is None:
+            trail.append("stop: that ref is not a turn seat in this window.")
+            break
+        cur = nxt
+    return "\n".join(trail)
+
+
+def history_slab(place_mode, genesis, blocks):
+    """Labeled last-N for the face (and for /probe). Empty if not placed."""
+    if place_mode not in ("fold", "raw") or not blocks:
+        return ""
+    if place_mode == "fold":
+        return fold_recap(genesis, blocks)
+    return PRIOR_RECORD + "\n" + prior_record_slab(blocks)
+
+
+def score_clock(placed_mode="none", n_keep=0, held_n=0):
+    """What entered the face window. FETCHED discipline, not a ranking."""
+    mode = placed_mode or "none"
+    if mode in ("fold", "raw"):
+        hist = mode + "(" + str(int(n_keep)) + ")"
+    else:
+        hist = "none"
+    return "PLACED: " + hist + " · hold(" + str(int(held_n)) + ")"
+
+
 def window_status():
-    """What last-N will show the model. A clock, not a ranking."""
+    """Diary last-N and holds. Last-N enters the face only if placed."""
     genesis, keep = turn_record.gather_turns(HISTORY_TURNS)
     del genesis
     _g, holds = turn_record.active_holds()
     del _g
+    stand = standing_history_mode()
+    if stand == "none":
+        face_line = (
+            "face window: holds + placed file/url + the live line. "
+            "Last-N off (GT_SCORE_HISTORY=none, lab). ^ fold or ^^ raw this turn."
+        )
+    else:
+        face_line = (
+            "face window: holds + placed file/url + last-N ("
+            + stand + ", divider family) + the live line. "
+            "Lab isolation: GT_SCORE_HISTORY=none. This turn: ^ fold or ^^ raw."
+        )
     lines = [
-        "window: " + str(len(keep)) + " turn(s) after last /forget "
+        score_clock(stand, len(keep), len(holds)),
+        face_line,
+        "diary: " + str(len(keep)) + " turn(s) after last /forget "
         "(cap " + str(HISTORY_TURNS) + "). "
-        "/history is the text. /forget drops it."
+        "/history is that view for you. /forget drops it.",
     ]
     if not keep:
-        lines.append("  (empty — next answer sees no prior turns)")
+        lines.append("  (diary empty)")
     for b in keep:
         asked = (turn_record.field(b["body"], "ASKED") or "").strip()
         first = asked.splitlines()[0] if asked else "(empty ASKED)"
@@ -426,7 +641,7 @@ def _press_piece(token, named, file_id):
     return None
 
 
-def _relied_payload(full_prompt, named_pieces):
+def _relied_payload(full_prompt, named_pieces, last_ids=()):
     """gt_relied request or (None, clock-line). Never all-heads."""
     path = _model_path()
     b = model.backend()
@@ -440,7 +655,9 @@ def _relied_payload(full_prompt, named_pieces):
     if not named_pieces:
         return None, relied.NONE_PLACED
     spans = relied.spans_for_hook(
-        full_prompt, named_pieces, lambda s: model.tokenize(s, add_special=False))
+        full_prompt, named_pieces,
+        lambda s: model.tokenize(s, add_special=False),
+        last_ids=last_ids)
     if not spans:
         return None, relied.NONE_PLACED
     return {"heads": prof["heads"], "spans": spans}, None
@@ -494,6 +711,37 @@ def _hold_banner_text():
     return "\n\n".join(parts), len(holds)
 
 
+def _sheet_window_refuse(asked="", answered="", extra="", beneath=False):
+    """None if the whole sheet fits. Else a named refusal. Never a core."""
+    sheet = path_stack.tag_sheet_beneath()
+    if beneath:
+        if not model.walk_up():
+            msg = (
+                "SHEET: REFUSED — no beneath server at " + model.WALK
+                + ". Start the CPU 2B there. The face was not asked."
+            )
+            return msg, sheet
+        info = model.walk_props()
+    else:
+        info = model.loaded_model()
+    n_ctx = info.get("n_ctx") if isinstance(info, dict) else None
+    ok, need, ctx = path_stack.sheet_fits_ctx(
+        n_ctx, sheet, asked, answered, extra)
+    if ok:
+        return None, sheet
+    ctx_s = str(ctx) if ctx else "unknown"
+    where = "beneath" if beneath else "face"
+    msg = (
+        "SHEET: REFUSED — the whole tag sheet is "
+        + str(len(path_stack.tag_sheet_text()))
+        + " chars; " + where + " window n_ctx=" + ctx_s
+        + " (need ~" + str(need) + " tokens). "
+        + "A live-core is not the sheet. CPU 2B at :8081 with -c 8192 "
+        + "holds it. This summons will not amputate the blood."
+    )
+    return msg, sheet
+
+
 def summon_look(declared, sequel):
     """Second span on leftover speech. Returns (speech, engine). Never a boolean.
 
@@ -520,7 +768,12 @@ def summon_look(declared, sequel):
             print(f"LOOK: Dango did not answer ({e}).", file=sys.stderr)
             sys.stderr.flush()
             dango_part = f"DANGO: did not answer ({e})"
-    user = path_stack.tag_sheet_live_core() + "\n\n"
+    refuse, sheet = _sheet_window_refuse(declared, sequel, LOOK_SYSTEM)
+    if refuse:
+        print(refuse, file=sys.stderr)
+        body = (dango_part + "\n\n" if dango_part else "") + refuse
+        return body, "refused-window"
+    user = sheet + "\n\n"
     user += f"[DECLARED PATH]\n{declared}\n\n"
     user += f"[LEFTOVER SPEECH — not the answer]\n{sequel}\n"
     if dango_part:
@@ -551,7 +804,9 @@ class Step:
 
 
 _SUMMON_TABS = (
-    "/walk", "/comment", "/shape", "/probe", "/views", "/history",
+    "/walk", "/sheet", "/keep", "/comment", "/shape", "/probe",
+    "/views", "/history",
+    "/fold", "/open", "/inquire", "/bearings", "/reset",
     "/help", "/held", "/sequel", "/raw", "/pile", "/law", "/declared",
     "/model",
 )
@@ -572,12 +827,14 @@ class Talk:
         self.last_turn_id = ""
         self.last_sequel = ""
         self.last_walk = ""
+        self.last_proposal = ""
         self.skin_on = False
         self.law_ref = ""
         self.dial_alpha = None
         self.press_strength = None
         self.press_span = None
         self.place_law = False
+        self.pending_revises = None
 
     def boot(self):
         self.contract = _load(os.path.join(HERE, "contract.txt"), "The output contract")
@@ -601,7 +858,7 @@ class Talk:
 
         info = model.loaded_model()
         self.turn_n, self.last_raw, self.last_turn_id = 0, "", ""
-        self.last_sequel, self.last_walk = "", ""
+        self.last_sequel, self.last_walk, self.last_proposal = "", "", ""
         self.skin_on = False
         self.law_ref = ""
         self.dial_alpha = None
@@ -631,6 +888,8 @@ class Talk:
         else:
             print("/walk is not ready (Dango or gloss missing). Talk still works.")
         print("/comment asks what the last record is for. Body only. No tag.")
+        print("/sheet summons the tag sheet on the last turn (CPU 2B :8081, not the face).")
+        print("/keep files the last /sheet proposal you judged.")
 
         return 0
 
@@ -722,6 +981,107 @@ class Talk:
             print(turn_record.view_for_model(HISTORY_TURNS, selector=sel)
                   or "(nothing yet)")
             return "loop"
+        if low == "/fold" or low.startswith("/fold "):
+            bits = msg.split()
+            if len(bits) == 1:
+                genesis, keep = turn_record.gather_turns(HISTORY_TURNS)
+                print(fold_recap(genesis, keep))
+                return "loop"
+            start, end, err = _parse_span(bits)
+            if err:
+                print(err)
+                return "loop"
+            text, ferr = turn_record.fold_articulate(start, end)
+            if ferr:
+                print(ferr)
+                return "loop"
+            print(text)
+            return "loop"
+        if low == "/open":
+            genesis, asks = turn_record.active_asks()
+            if not asks:
+                print("nothing is open.")
+                return "loop"
+            for i, a in enumerate(asks, 1):
+                name = turn_record.traveling_name(genesis, a)
+                first = (turn_record.field(a["body"], "ASK") or "").split(
+                    "\n", 1)[0]
+                print(str(i) + ". " + name + "  " + first)
+            return "loop"
+        if low == "/reset" or low.startswith("/reset "):
+            reason = msg[6:].strip() if len(msg) > 6 else ""
+            old = turn_record.turns_path()
+            folder, name = os.path.split(old)
+            root, ext = os.path.splitext(name)
+            stamp = str(int(time.time()))
+            new = os.path.join(folder, root + "-reset-" + stamp + (ext or ".pn"))
+            try:
+                turn_record.record_reset(old, new, reason=reason or "fresh pile")
+            except PileError as e:
+                print(f"turn pile refused the reset mark: {e}", file=sys.stderr)
+                return "loop"
+            os.environ["GT_TURN_PILE"] = new
+            try:
+                turn_record.ensure_session()
+            except PileError as e:
+                print(f"new pile refused session: {e}", file=sys.stderr)
+            self.turn_n = 0
+            self.pending_revises = None
+            self.last_proposal = ""
+            print("reset. old pile kept: " + old)
+            print("new pile: " + new)
+            return "loop"
+        if low == "/revises" or low.startswith("/revises "):
+            parsed = parse_revises_line(msg)
+            if parsed is None:
+                print("/revises needs a turn seat or ref.")
+                return "loop"
+            tok, notes, err = parsed
+            if err:
+                print("/revises: " + err)
+                return "loop"
+            genesis, target, _note = turn_record.resolve_turn_seat(tok)
+            if target is None:
+                print("/revises: turn missed.")
+                return "loop"
+            ref = turn_record.traveling_name(genesis, target)
+            try:
+                turn_record.record_revises_mark(ref, notes)
+            except PileError as e:
+                print(f"turn pile refused the revises mark: {e}", file=sys.stderr)
+                return "loop"
+            self.pending_revises = (ref, notes)
+            print("revises marked. next turn refs " + ref)
+            return "loop"
+        if low == "/inquire" or low.startswith("/inquire "):
+            bits = msg.split()
+            start, end, err = _parse_span(bits)
+            if err:
+                print("/inquire a b — seats after /forget.")
+                return "loop"
+            print(_run_inquire(start, end))
+            return "loop"
+        if low == "/bearings" or low.startswith("/bearings "):
+            bits = msg.split()
+            start, end, err = _parse_span(bits)
+            if err:
+                print("/bearings a b — seats after /forget.")
+                return "loop"
+            recap, ferr = turn_record.fold_articulate(start, end)
+            if ferr:
+                print(ferr)
+                return "loop"
+            print(recap)
+            print()
+            print("── bearings (one call on the recap — not a chain) ──")
+            try:
+                speech = model.look(BEARINGS_SYSTEM, recap)
+            except model.ServerDown as e:
+                print("(model missed; the recap above is the whole answer)")
+                print(str(e))
+                return "loop"
+            print(speech or "(empty bearings)")
+            return "loop"
         if low == "/sequel":
             print(self.last_sequel or "(no sequel this session)")
             return "loop"
@@ -804,6 +1164,64 @@ class Talk:
             except PileError as e:
                 print(f"turn pile refused the walk block: {e}", file=sys.stderr)
             return "loop"
+        if low == "/sheet":
+            genesis, last = turn_record.last_turn()
+            if last is None:
+                print("/sheet needs a completed turn.")
+                return "loop"
+            asked = turn_record.field(last["body"], "ASKED")
+            answered = turn_record.field(last["body"], "ANSWERED")
+            refuse, sheet = _sheet_window_refuse(
+                asked, answered, SHEET_SYSTEM, beneath=True)
+            if refuse:
+                print(refuse)
+                self.last_proposal = ""
+                return "loop"
+            user = sheet + "\n\n"
+            user += "[THIS TURN — not the face]\n"
+            user += "ASKED:\n" + (asked or "") + "\n\n"
+            user += "ANSWERED:\n" + (answered or "") + "\n"
+            ask_slab = _open_asks_slab()
+            if ask_slab:
+                user += "\n" + ask_slab + "\n"
+            print("SHEET: summoned — tag sheet on this turn. Not the face.",
+                  file=sys.stderr)
+            sys.stderr.flush()
+            try:
+                speech = model.sheet(SHEET_SYSTEM, user)
+            except model.ServerDown as e:
+                print("SHEET did not answer (" + str(e) + ")")
+                return "loop"
+            self.last_proposal = speech or ""
+            print()
+            print(speech or "(empty sheet)")
+            print("SHEET: shown, not filed. Type /keep if you judge it.",
+                  file=sys.stderr)
+            return "loop"
+        if low == "/keep":
+            if not (self.last_proposal or "").strip():
+                print("/keep needs a /sheet proposal first.")
+                return "loop"
+            genesis, last = turn_record.last_turn()
+            if last is None:
+                print("/keep needs a completed turn.")
+                return "loop"
+            accepted, refused = path_stack.parse_proposal(self.last_proposal)
+            print()
+            if accepted:
+                print("KEEP: filing " + str(len(accepted)) + " tag(s) you judged.")
+            else:
+                print("KEEP: no @key:value lines accepted.")
+            if refused:
+                print("KEEP refused: " + "; ".join(refused))
+            try:
+                turn_record.record_sheet(
+                    self.last_proposal, accepted, refused,
+                    ref_id=turn_record.traveling_name(genesis, last))
+            except PileError as e:
+                print(f"turn pile refused the sheet keep: {e}", file=sys.stderr)
+            self.last_proposal = ""
+            return "loop"
         if low == "/comment":
             genesis, last = turn_record.last_turn()
             if last is None:
@@ -861,20 +1279,22 @@ class Talk:
             answered = turn_record.field(last["body"], "ANSWERED")
             premise_body = turn_record.build_premise_body(holds)
             premise_prompt = turn_record.build_premise_prompt(holds)
+            stand = standing_history_mode()
             _hg, prior = turn_record.gather_turns_before(
                 last, HISTORY_TURNS)
             del _hg
-            pairs = []
-            for b in prior:
-                pairs.append((
-                    turn_record.field(b["body"], "ASKED"),
-                    turn_record.field(b["body"], "ANSWERED"),
-                ))
+            if stand == "none":
+                prior = []
             user_prompt = asked
             if file_block:
                 user_prompt = file_block + "\n\n" + user_prompt
+            slab = history_slab(stand, genesis, prior)
+            if slab:
+                user_prompt = (
+                    slab + "\n\n" + LIVE_MOUTH + "\n" + user_prompt
+                )
             user_prompt = premise_prompt + "\n\n" + user_prompt
-            probe_full = model.granite_chat(user_prompt, pairs)
+            probe_full = model.granite_chat(user_prompt, None)
             named = []
             for h in holds:
                 tes = turn_record.field(h["body"], "HELD")
@@ -884,7 +1304,7 @@ class Talk:
             payload, pre_clock = _relied_payload(probe_full, named)
             try:
                 rendered, probe_resp = model.probe_measured(
-                    user_prompt, history_pairs=pairs, gt_relied=payload)
+                    user_prompt, history_pairs=None, gt_relied=payload)
             except model.ServerDown as e:
                 print(f"\n{e}")
                 return "loop"
@@ -1017,6 +1437,36 @@ class Talk:
             print(f"unknown command {msg.split()[0]} — /help lists them.")
             return "loop"
 
+        ask_q = parse_ask_line(msg)
+        if ask_q is not None:
+            if not ask_q:
+                print("!ask needs a question. Nothing was opened.")
+                return "loop"
+            try:
+                token, _g = turn_record.record_ask(ask_q)
+            except PileError as e:
+                print(f"turn pile refused the ask: {e}", file=sys.stderr)
+                return "loop"
+            print("ask open " + token)
+            return "loop"
+        closed_tok = parse_closed_line(msg)
+        if closed_tok is not None:
+            if not closed_tok:
+                print("!closed needs an /open index or a ref.")
+                return "loop"
+            genesis, ask, _n = turn_record.resolve_ask_ref(closed_tok)
+            if ask is None:
+                print("!closed: not an open ask.")
+                return "loop"
+            name = turn_record.traveling_name(genesis, ask)
+            try:
+                turn_record.record_ask_closed(name, "closed by hand")
+            except PileError as e:
+                print(f"turn pile refused the close: {e}", file=sys.stderr)
+                return "loop"
+            print("ask closed " + name)
+            return "loop"
+
         held_line = parse_hold_line(msg)
         if held_line is not None:
             testimony, awaits, dissolves = held_line
@@ -1128,10 +1578,14 @@ class Talk:
                 placed_path = got.target
 
         user_q = question if placed_path is not None else msg
+        sigil, user_q = parse_score_place(user_q)
+        stand = standing_history_mode()
+        place_mode = sigil if sigil else stand
+        if place_mode == "none":
+            place_mode = None
         declared, _ = parse_bang_path(msg)
         self.turn_n += 1
-        _genesis, keep = turn_record.gather_turns(HISTORY_TURNS)
-        del _genesis
+        genesis, keep = turn_record.gather_turns(HISTORY_TURNS)
         user_prompt = user_q
         if file_block:
             user_prompt = f"{file_block}\n\n{user_q}"
@@ -1155,6 +1609,12 @@ class Talk:
         for h, href in zip(hold_blocks, hold_refs):
             tes = turn_record.field(h["body"], "HELD")
             named.append((href, turn_record.HOLD_BANNER + "\n" + tes))
+        # C1: his own words are a named span. The most-placed material in any
+        # window, and the one thing RELIED could not see until now. Located at
+        # its LAST occurrence: the live line sits last in the face window, and
+        # a placed file quoting the question back must not capture the span.
+        if (user_q or "").strip():
+            named.append((relied.ASKED_SPAN, user_q))
         fetched_text = ""
         file_id = ""
         if fetched_from and delivered:
@@ -1180,16 +1640,18 @@ class Talk:
                           file=sys.stderr)
             if self.law_ref:
                 named.append((self.law_ref, system))
-        # Unmasked talk: last-N as ASKED/ANSWERED under a clerk divider,
-        # not as Granite user/assistant history (that wrap continued
-        # prior assistant text as the face). Skin keeps no history.
-        if keep and not self.skin_on:
-            slab = prior_record_slab(keep)
-            if slab.strip():
-                user_prompt = (
-                    PRIOR_RECORD + "\n" + slab + "\n\n"
-                    + LIVE_MOUTH + "\n" + user_prompt
-                )
+        # R1/R2: last-N enters only when he places it. Skin keeps no history.
+        if place_mode in ("fold", "raw") and self.skin_on:
+            print("PLACED: none — skin is on; fold/raw not placed",
+                  file=sys.stderr)
+            place_mode = None
+        if place_mode in ("fold", "raw") and keep:
+            slab = history_slab(place_mode, genesis, keep)
+            user_prompt = (
+                slab + "\n\n" + LIVE_MOUTH + "\n" + user_prompt
+            )
+        elif place_mode in ("fold", "raw") and not keep:
+            place_mode = None
         hist = None
         gram = None
         if use_held_skin:
@@ -1213,7 +1675,9 @@ class Talk:
                 print(PRESS_NEED_SPAN)
                 self.turn_n -= 1
                 return "loop"
-        payload, pre_clock = _relied_payload(full_prompt, named)
+        asked_last = (relied.ASKED_SPAN,)
+        payload, pre_clock = _relied_payload(
+            full_prompt, named, last_ids=asked_last)
         gt_dial = None
         gt_press = None
         if self.dial_alpha:
@@ -1223,7 +1687,8 @@ class Talk:
             else:
                 spans = relied.spans_for_hook(
                     full_prompt, named,
-                    lambda s: model.tokenize(s, add_special=False))
+                    lambda s: model.tokenize(s, add_special=False),
+                    last_ids=asked_last)
             if not spans:
                 print(DIAL_NEED_SPAN)
                 self.turn_n -= 1
@@ -1270,19 +1735,43 @@ class Talk:
             return "loop"
         self.last_raw = raw
 
+        cut_byte = None
         if self.skin_on:
             answer, absent, _held_seat = parse_skin(raw)
             del _held_seat
             sequel = ""
         else:
-            answer, sequel = split_tape(raw, asked=user_q)
+            answer, sequel, cut_byte = split_tape(raw, asked=user_q)
             if answer and is_training_loop_line(answer.splitlines()[0]):
                 sequel = (answer + "\n" + sequel).strip()
                 answer = ""
             absent = not answer
 
+        # C3: the underside curve. The hook was cut-ignorant; the cut arrives
+        # here. A series that does not reconcile with the generation is refused,
+        # never walked to a quietly misplaced boundary. Disclosure only: no
+        # curve is ever a gate, a filter, a selector, or a cut.
+        underside_line = ""
+        underside_profiles = None
+        underside_series = None
+        underside_refusal = ""
+        if not use_held_skin:
+            _ser, _snote = relied.parse_series(resp)
+            underside_series = _ser
+            if _ser is not None:
+                underside_profiles, _pnote = relied.split_series(
+                    _ser, cut_byte, len((raw or "").encode("utf-8")))
+                if underside_profiles is not None:
+                    underside_line = relied.underside_clock(
+                        underside_profiles, relied.ASKED_SPAN)
+                else:
+                    underside_line = _pnote
+                    underside_refusal = _pnote
+
         dial_applied = bool(gt_dial) and resp.get("gt_dial_applied") is True
         press_applied = bool(gt_press) and resp.get("gt_press_applied") is True
+        if underside_line:
+            print(underside_line, file=sys.stderr)
         print()
         if use_held_skin:
             print(HELD_SKIN_LOUD)
@@ -1315,6 +1804,8 @@ class Talk:
             dial=self.dial_alpha if dial_applied else "",
             press_s=self.press_strength if press_applied else "",
             press_sp=self.press_span if press_applied else "")
+        print(score_clock(place_mode or "none", len(keep), held_n),
+              file=sys.stderr)
         if sequel and not absent:
             if file_tail:
                 print("EXTRA: declared — filed " + str(len(sequel))
@@ -1324,17 +1815,31 @@ class Talk:
                       + " chars", file=sys.stderr)
         else:
             print("EXTRA: none", file=sys.stderr)
+        # DECLARED CALL-SITE (C-half, disclosure). What ended this completion,
+        # read off the reply run.py already holds. No behaviour changes here:
+        # the stop list stands, EOS is not lifted, nothing is banned. Two
+        # silences that were indistinguishable are now told apart every turn.
+        print(relied.stopped_clock(resp), file=sys.stderr)
         names = [n for n, _ in named]
         masses = _masses_in_order(resp, names)
+        # A piece that was placed and came back with no reading is NAMED, not
+        # dropped. The all-fail case was already named; the partial case was
+        # not, and a vanished span reads as a span that was never placed.
+        unread = relied.unaccounted_spans(resp, names)
         if payload and resp.get("gt_relied_saw_softmax") is False:
             print(relied.NO_HOOK, file=sys.stderr)
             masses = []
-        elif masses:
-            print(relied.masses_clock(masses), file=sys.stderr)
+        elif masses or unread:
+            print(relied.masses_clock(masses, unread), file=sys.stderr)
         else:
             print(pre_clock or _relied_line(placed=bool(named)),
                   file=sys.stderr)
         sys.stderr.flush()
+
+        extra = []
+        if self.pending_revises:
+            extra.append(("ref", self.pending_revises[0]))
+            self.pending_revises = None
 
         try:
             pressed_tag = ""
@@ -1344,13 +1849,24 @@ class Talk:
                 asked=user_q, answered=shown, kind=mouth,
                 fetched=fetched_from, skin_on=self.skin_on,
                 backend=model.backend() or "", raw=self.last_raw,
-                extra_tags=None, declared_path=declared,
+                extra_tags=extra if extra else None, declared_path=declared,
                 fetched_text=fetched_text, hold_refs=hold_refs,
                 relied=masses,
                 dialed=self.dial_alpha if dial_applied else "",
                 pressed=pressed_tag)
             self.last_turn_id = bid
             del gen
+            # DECLARED CALL-SITE (C-half, storage). The curve is filed as its
+            # own block, @ref: to the turn just written -- F3's sibling, not a
+            # body section. No series means no sibling: absence is structural,
+            # never a row of zeros. Nothing here derives; relied.py already did.
+            try:
+                turn_record.record_curve(
+                    bid, underside_series, underside_profiles,
+                    note=underside_refusal)
+            except PileError as e:
+                print(f"turn pile refused the curve block: {e}",
+                      file=sys.stderr)
             if file_tail:
                 turn_record.record_sequel(
                     sequel, ref_id=bid, declared_path=declared)

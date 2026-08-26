@@ -48,8 +48,10 @@ if WEB_SITE and os.path.isdir(WEB_SITE) and WEB_SITE not in sys.path:
 LOG_PANE = "talk"
 TAB_LABEL_MAX = 16
 SUMMONS = (
-    "/views", "/history", "/walk", "/comment", "/shape", "/probe",
-    "/held", "/sequel", "/raw", "/help", "/pile", "/law", "/declared",
+    "/views", "/history", "/walk", "/sheet", "/keep", "/comment",
+    "/shape", "/probe",
+    "/held", "/open", "/fold", "/inquire", "/bearings", "/reset",
+    "/sequel", "/raw", "/help", "/pile", "/law", "/declared",
     "/model",
 )
 

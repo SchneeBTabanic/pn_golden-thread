@@ -29,6 +29,8 @@ MOUTHS = (
     "comment", "look", "hold", "release", "probe",
     "fetch", "search", "html",
     "refuse-fetch", "refuse-search", "refuse-html",
+    "sheet",
+    "ask", "closed-ask", "revises", "reset",
 )
 
 HOLD_BANNER = (
@@ -190,11 +192,12 @@ def record_turn(asked, answered, kind, fetched="", skin_on=False,
         tags.append(("watches", _hyphen(declared_path)[:80]))
     for pair in extra_tags or []:
         key, val = pair
-        if key in ("act", "path") and val:
+        if not key or not val:
+            continue
+        if " " in str(key) or " " in str(val):
+            raise PileError("extra tag contains a space: " + str(key) + ":" + str(val))
+        if key in ("act", "path", "ref"):
             tags.append((key, val))
-        elif key not in ("act", "path"):
-            # pipeline facts (touched:dango) may sit on the walk, not here
-            pass
     for href in hold_refs or []:
         if href:
             tags.append(("ref", href))
@@ -213,6 +216,46 @@ def record_turn(asked, answered, kind, fetched="", skin_on=False,
             raise PileError("pressed tag value contains a space: " + str(pressed))
         tags.append(("part", "pressed"))
         tags.append(("pressed", str(pressed)))
+    return capture_append(turns_path(), body, tags, source="runtime")
+
+
+def record_curve(turn_ref, series, profiles=None, note=""):
+    """The curve that annotates one turn, as its OWN block. Sibling, not a body.
+
+    No series, no sibling. A refused split still files its SERIES.
+    Nothing is derived here; relied.py already computed for the clock.
+    """
+    import relied
+
+    if not series or not (series.get("bytes") or []):
+        return None, None
+
+    sections = [relied.series_body(series)]
+    if profiles:
+        sections.append(relied.profiles_body(profiles))
+    else:
+        sections.append(note or relied.CURVE_NO_PROFILES)
+    body = "\n\n".join(x for x in sections if x)
+
+    tags = [
+        ("topic", "curve"),
+        ("name", "curve"),
+        ("origin", "ai"),
+        ("source", "runtime"),
+        ("captured", "golden-thread"),
+        ("part", "curve"),
+    ]
+    tags.append(("act", "hold-the-curve-that-annotates-a-turn"))
+    tags.append(("path", "toward-a-reading-that-can-be-resplit"))
+    if turn_ref:
+        tags.append(("ref", str(turn_ref)))
+    for seat, name, seat_bin in relied.curve_bins(profiles):
+        val = seat + "-" + str(name) + "-" + seat_bin
+        if " " in val:
+            raise PileError("binned tag value contains a space: " + val)
+        tags.append(("binned", val))
+    if not profiles:
+        tags.append(("refuses", "splitting-a-series-that-does-not-reconcile"))
     return capture_append(turns_path(), body, tags, source="runtime")
 
 
@@ -286,6 +329,24 @@ def record_walk(speech, accepted, refused, ref_id=""):
     return capture_append(turns_path(), body, tags, source="runtime")
 
 
+def record_sheet(speech, accepted, refused, ref_id=""):
+    """A judged sheet-reading. Accepted meaning seats live on this block.
+
+    Clerk copies pairs the human /keep'd. It does not invent values.
+    """
+    ensure_session()
+    body = f"SHEET:\n{speech}"
+    if refused:
+        body += "\n\nREFUSED:\n" + "\n".join(refused)
+    tags = _minutes("sheet", "ai", "sheet", "sheet")
+    tags.append(("part", "sheet"))
+    for pair in accepted:
+        tags.append(pair)
+    if ref_id:
+        tags.append(("ref", _ref_tag(ref_id)))
+    return capture_append(turns_path(), body, tags, source="runtime")
+
+
 def record_shape(speech, ref_id="", story_path=""):
     """Shape-speech. Not an answer. Returns (block_id, genesis)."""
     ensure_session()
@@ -324,6 +385,265 @@ def record_forget(dropped):
     )
     tags = _minutes("forget", "human", "forget", "forget")
     return capture_append(turns_path(), body, tags, source="runtime")
+
+
+def record_ask(question):
+    """A burning question. Only he closes it. Not a hold. Not in the face."""
+    ensure_session()
+    known_mouth("ask")
+    body = "ASK:\n" + (question or "")
+    tags = [
+        ("topic", "ask"),
+        ("name", "ask"),
+        ("origin", "human"),
+        ("source", "runtime"),
+        ("captured", "golden-thread"),
+        ("aspect", "prospective"),
+        ("part", "ask"),
+        ("awaits", "his-hand-on-closed"),
+    ]
+    return capture_append(turns_path(), body, tags, source="runtime")
+
+
+def record_ask_closed(ask_ref, reason=""):
+    """Close an ask. The ask block is not edited."""
+    ensure_session()
+    known_mouth("closed-ask")
+    body = "CLOSED:\n" + (reason or "closed by hand")
+    tags = [
+        ("topic", "closed-ask"),
+        ("name", "closed-ask"),
+        ("origin", "human"),
+        ("source", "runtime"),
+        ("captured", "golden-thread"),
+        ("aspect", "manifested"),
+        ("part", "ask"),
+        ("ref", ask_ref),
+        ("verified", _hyphen(reason or "closed-by-hand")[:80]),
+    ]
+    return capture_append(turns_path(), body, tags, source="runtime")
+
+
+def record_revises_mark(target_ref, notes=None):
+    """The edge itself, as a block. Next turn also carries @ref."""
+    ensure_session()
+    known_mouth("revises")
+    lines = ["REVISES:\n" + (target_ref or "")]
+    for k in ("rejected", "expanded", "narrowed", "invariant"):
+        if notes and notes.get(k):
+            lines.append(k.upper() + ":\n" + notes[k])
+    body = "\n\n".join(lines)
+    tags = [
+        ("topic", "revises"),
+        ("name", "revises"),
+        ("origin", "human"),
+        ("source", "runtime"),
+        ("captured", "golden-thread"),
+        ("part", "revises"),
+        ("ref", target_ref),
+    ]
+    return capture_append(turns_path(), body, tags, source="runtime")
+
+
+def record_reset(old_path, new_path, reason=""):
+    """Mark a pile cut. Does not delete the old pile."""
+    ensure_session()
+    known_mouth("reset")
+    body = (
+        "RESET:\n" + (reason or "fresh pile")
+        + "\n\nFROM:\n" + (old_path or "")
+        + "\n\nTO:\n" + (new_path or "")
+    )
+    tags = [
+        ("topic", "reset"),
+        ("name", "reset"),
+        ("origin", "human"),
+        ("source", "runtime"),
+        ("captured", "golden-thread"),
+        ("part", "reset"),
+    ]
+    return capture_append(turns_path(), body, tags, source="runtime")
+
+
+def active_asks():
+    """Asks with no closed-ask whose ref formed-token matches. Arrival order."""
+    genesis, blocks = load_pile(turns_path())
+    closed = set()
+    for b in blocks:
+        if tag_first(b, "topic") == "closed-ask":
+            for v in tag_values(b, "ref"):
+                tok = ref_formed_token(v)
+                if tok:
+                    closed.add(tok)
+    asks = []
+    for b in blocks:
+        if tag_first(b, "topic") != "ask":
+            continue
+        formed = _formed_of(b)
+        if formed and formed not in closed:
+            asks.append(b)
+    return genesis, asks
+
+
+def resolve_ask_ref(token):
+    """Index in /open (1-based), or hold-style traveling name / offset."""
+    genesis, asks = active_asks()
+    s = (token or "").strip()
+    if s.isdigit():
+        i = int(s)
+        if 1 <= i <= len(asks):
+            return genesis, asks[i - 1], ""
+        return genesis, None, "ask index missed"
+    genesis2, blocks = load_pile(turns_path())
+    del genesis2
+    if s.startswith("#"):
+        s = s[1:]
+    want_formed = ref_formed_token(s) if "/" in s else ""
+    want_off = None
+    if "#" in s and s.split("#", 1)[1].split("/", 1)[0].isdigit():
+        want_off = int(s.split("#", 1)[1].split("/", 1)[0])
+    elif s.isdigit():
+        want_off = int(s)
+    by_off = None
+    by_formed = None
+    for b in blocks:
+        if tag_first(b, "topic") != "ask":
+            continue
+        if want_off is not None and b.get("offset") == want_off:
+            by_off = b
+        if want_formed and _formed_of(b) == want_formed:
+            by_formed = b
+    if by_off is not None:
+        return genesis, by_off, ""
+    if by_formed is not None:
+        return genesis, by_formed, ""
+    return genesis, None, ""
+
+
+def resolve_turn_seat(token):
+    """1-based seat in the post-forget turn list, or a traveling name."""
+    genesis, turns = gather_turns(0)
+    s = (token or "").strip()
+    if s.isdigit():
+        i = int(s)
+        if 1 <= i <= len(turns):
+            return genesis, turns[i - 1], ""
+        return genesis, None, "turn seat missed (1.." + str(len(turns)) + ")"
+    want_formed = ref_formed_token(s) if "/" in s else ""
+    want_off = None
+    if s.startswith("#"):
+        s = s[1:]
+    if "#" in s and s.split("#", 1)[1].split("/", 1)[0].isdigit():
+        want_off = int(s.split("#", 1)[1].split("/", 1)[0])
+    for b in turns:
+        if want_off is not None and b.get("offset") == want_off:
+            return genesis, b, ""
+        if want_formed and _formed_of(b) == want_formed:
+            return genesis, b, ""
+        if traveling_name(genesis, b) == (token or "").strip():
+            return genesis, b, ""
+    return genesis, None, ""
+
+
+def revises_edges():
+    """[(from_turn, to_ref), ...] from @ref on turns and revises blocks."""
+    genesis, blocks = load_pile(turns_path())
+    out = []
+    for b in blocks:
+        topic = tag_first(b, "topic")
+        if topic not in ("turn", "revises"):
+            continue
+        for v in tag_values(b, "ref"):
+            if v:
+                out.append((b, v, genesis))
+    return out
+
+
+def inquire_moves(turn_block):
+    """Python-verified edges only. No guessed similarity."""
+    if not turn_block:
+        return []
+    genesis, blocks = load_pile(turns_path())
+    here = traveling_name(genesis, turn_block)
+    formed = _formed_of(turn_block)
+    moves = []
+    for v in tag_values(turn_block, "ref"):
+        moves.append(("revises-out", v))
+    for b in blocks:
+        if not is_turn(b):
+            continue
+        src = traveling_name(genesis, b)
+        if src == here:
+            continue
+        for v in tag_values(b, "ref"):
+            tok = ref_formed_token(v)
+            if formed and tok == formed:
+                moves.append(("revises-in", src))
+    seen = set()
+    uniq = []
+    for kind, ref in moves:
+        key = kind + ":" + ref
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append((kind, ref))
+    return uniq
+
+
+def fold_articulate(start, end):
+    """Deterministic recap of seats start..end (1-based, post-forget). No model."""
+    genesis, turns = gather_turns(0)
+    n = len(turns)
+    if start < 1 or end < start or end > n:
+        return "", "fold range missed (1.." + str(n) + " after /forget)"
+    span = turns[start - 1:end]
+    span_formed = set(_formed_of(b) for b in span)
+    _g, asks = active_asks()
+    del _g
+    lines = [
+        "── fold (articulation — no model) ──",
+        "seats " + str(start) + ".." + str(end) + " of " + str(n)
+        + " after last /forget",
+    ]
+    alive = []
+    for a in asks:
+        tes = field(a["body"], "ASK")
+        alive.append(traveling_name(genesis, a) + "  " + (tes or "").split("\n", 1)[0])
+    lines.append("ALIVE (open !ask, whole pile, still burning):")
+    if alive:
+        for i, row in enumerate(alive, 1):
+            lines.append("  " + str(i) + ". " + row)
+    else:
+        lines.append("  (none)")
+    lines.append("REVISES (asserted edges touching this span):")
+    any_edge = False
+    for b, v, _g in revises_edges():
+        src_form = _formed_of(b)
+        dst_form = ref_formed_token(v)
+        if src_form in span_formed or dst_form in span_formed:
+            lines.append("  " + traveling_name(genesis, b) + " -> " + v)
+            any_edge = True
+    if not any_edge:
+        lines.append("  (none)")
+    lines.append("ISOLATED (turns in span with no @ref):")
+    isolated = False
+    for b in span:
+        if tag_first(b, "topic") != "turn":
+            continue
+        if tag_values(b, "ref"):
+            continue
+        isolated = True
+        asked = (field(b["body"], "ASKED") or "").split("\n", 1)[0]
+        lines.append("  " + traveling_name(genesis, b) + "  " + asked)
+    if not isolated:
+        lines.append("  (none)")
+    lines.append("ONE NEXT (oldest open ask, else quiet):")
+    if asks:
+        tes = field(asks[0]["body"], "ASK")
+        lines.append("  " + (tes or "").strip())
+    else:
+        lines.append("  span is quiet — no open !ask")
+    return "\n".join(lines), ""
 
 
 def record_hold(testimony, awaits="", dissolves=""):
@@ -580,6 +900,17 @@ def traveling_name(genesis, block):
     return "(no traveling name — this pile is not linkable)"
 
 
+def is_turn(block):
+    """A turn, and not something that merely annotates one.
+
+    Append-only: a curve mistagged topic:turn stays on disk. The reader
+    excludes part:curve so /history does not render it as a blank turn.
+    """
+    if tag_first(block, "topic") != "turn":
+        return False
+    return tag_first(block, "part") != "curve"
+
+
 def gather_turns(limit):
     """Last `limit` topic:turn blocks after the latest /forget. A VIEW."""
     genesis, blocks = load_pile(turns_path())
@@ -588,7 +919,7 @@ def gather_turns(limit):
         if tag_first(b, "topic") == "forget":
             cut = i
     turns = [b for i, b in enumerate(blocks)
-             if tag_first(b, "topic") == "turn" and i > cut]
+             if is_turn(b) and i > cut]
     keep = turns[-limit:] if limit else turns
     return genesis, keep
 
@@ -614,7 +945,7 @@ def gather_turns_before(probed, limit):
                 if b.get("offset", 0) < probed_off:
                     cut = i
     turns = [b for i, b in enumerate(blocks)
-             if tag_first(b, "topic") == "turn" and i > cut and i < probed_i]
+             if is_turn(b) and i > cut and i < probed_i]
     keep = turns[-limit:] if limit else turns
     return genesis, keep
 
@@ -657,7 +988,7 @@ def view_for_model(limit, selector=""):
 def last_turn():
     """Last Executor turn in the pile, including those before a /forget."""
     genesis, blocks = load_pile(turns_path())
-    turns = [b for b in blocks if tag_first(b, "topic") == "turn"]
+    turns = [b for b in blocks if is_turn(b)]
     if not turns:
         return genesis, None
     return genesis, turns[-1]

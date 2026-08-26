@@ -74,6 +74,10 @@ def run():
             fails.append("divergent clock drifted: " + repr(diff))
     if runmod.PROBE_DIVIDER != DIVIDER:
         fails.append("run.PROBE_DIVIDER drifted")
+    if "history_pairs=pairs" in src:
+        fails.append("probe still feeds Granite role-history (Cathedral wrap)")
+    if "history_slab(" not in src.split("if low == \"/probe\"", 1)[-1][:2500]:
+        fails.append("probe does not share the face last-N slab")
 
     tmp = tempfile.mkdtemp(prefix="gt-probe-")
     pile = os.path.join(tmp, "turns.pn")

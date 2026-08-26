@@ -68,6 +68,82 @@ def tag_sheet_live_core():
         "[TAG SHEET live core — " + path
         + ". Researched meanings, not a menu.]\n" + core
     )
+
+
+_WRITER_OWNED = (
+    "formed", "extent", "genesis", "origin", "source", "captured",
+)
+_CLOSED = {
+    "aspect": ("manifesting", "manifested", "prospective"),
+    "because": ("misread", "parser-wrong", "ruling", "fix-elsewhere"),
+    "kept": ("evidence", "specimen", "pedagogy", "resonance"),
+}
+
+
+def tag_sheet_beneath():
+    """The whole TAGS-gforth.md. No live-core. No designer section cut.
+
+    If the window cannot hold it, the summons refuses by name. A core is
+    not the sheet. Lab §§6–8 is a second file; stuffing it in is a later
+    ctx, not an amputation of this one.
+    """
+    text = tag_sheet_text()
+    if text.startswith("[TAG SHEET ABSENT") or text.startswith("[TAG SHEET EMPTY"):
+        return text
+    path = os.environ.get("GT_TAG_SHEET", TAG_SHEET)
+    return (
+        "[TAG SHEET whole — " + path + ". " + str(len(text))
+        + " chars. No live-core. Meanings, not a menu. Do not walk every key.]\n"
+        + text
+    )
+
+
+def sheet_fits_ctx(n_ctx, sheet, asked="", answered="", system=""):
+    """Conservative 3 chars/token. False must refuse, never amputate."""
+    prompt = (sheet or "") + (asked or "") + (answered or "") + (system or "")
+    need = (len(prompt) + 2) // 3 + 80
+    try:
+        ctx = int(n_ctx or 0)
+    except (TypeError, ValueError):
+        ctx = 0
+    if ctx <= 0:
+        return False, need, 0
+    return need <= ctx, need, ctx
+
+
+def parse_proposal(text):
+    """@key:value lines the human can /keep. Clerk copies; it does not invent.
+
+    Invented witness keys are allowed (the sheet's open space). Writer-owned
+    keys and spaces are refused. Closed vocabs are the four on the sheet.
+    """
+    accepted, refused = [], []
+    for raw in (text or "").splitlines():
+        line = raw.strip()
+        if not line.startswith("@"):
+            continue
+        rest = line[1:]
+        if ":" not in rest:
+            refused.append("no-colon " + line)
+            continue
+        key, val = rest.split(":", 1)
+        key, val = key.strip(), val.strip()
+        if not key or not val:
+            refused.append("empty " + line)
+            continue
+        if " " in key or " " in val:
+            refused.append("space " + key + ":" + val)
+            continue
+        if key in _WRITER_OWNED:
+            refused.append("writer-owned " + key)
+            continue
+        if key in _CLOSED and val not in _CLOSED[key]:
+            refused.append("closed-class " + key + ":" + val)
+            continue
+        accepted.append((key, val))
+    return accepted, refused
+
+
 # run.py is started with system python3; torch lives in this env.
 DANGO_SITE = os.environ.get(
     "GT_DANGO_SITE",

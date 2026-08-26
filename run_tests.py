@@ -21,6 +21,7 @@ SUITES = [
     "tests/test_tape.py",
     "tests/test_walk.py",
     "tests/test_path_stack.py",
+    "tests/test_sheet.py",
     "tests/test_turn_record.py",
     "tests/test_backend.py",
     "tests/test_skin.py",
@@ -28,8 +29,13 @@ SUITES = [
     "tests/test_export.py",
     "tests/test_gf_backend.py",
     "tests/test_hold.py",
+    "tests/test_ledger.py",
     "tests/test_probe.py",
     "tests/test_relied.py",
+    "tests/test_stop_disclosure.py",
+    "tests/test_relied_series.py",
+    "tests/test_underside.py",
+    "tests/test_curve_sibling.py",
     "tests/test_dial_press.py",
     "tests/test_prior_record.py",
     "tests/test_web.py",
@@ -117,10 +123,14 @@ def _guard_walk_is_summoned():
     fails = []
     if "PATH: Dango Japanese" in src:
         fails.append("run.py still runs the path stack on every answer")
-    if "extra_tags=None" not in src:
-        fails.append("run.py must record turns with extra_tags=None")
+    if "extra_tags=None" not in src and "extra if extra else None" not in src:
+        fails.append("run.py must still record turns with extra_tags=None")
     if 'low == "/walk"' not in src:
         fails.append("/walk summons is missing")
+    if 'low == "/sheet"' not in src:
+        fails.append("/sheet summons is missing")
+    if 'low == "/keep"' not in src:
+        fails.append("/keep is missing")
     if 'low == "/comment"' not in src:
         fails.append("/comment summons is missing")
     if 'low == "/probe"' not in src and 'low.startswith("/probe")' not in src:
@@ -150,8 +160,19 @@ def _guard_path_is_not_substring():
     if "summon_look" not in run_src:
         fails.append("run.py must summon a look on declared leftover speech")
     stack_src = open(os.path.join(HERE, "path_stack.py"), encoding="utf-8").read()
-    if "tag_sheet_live_core" not in run_src:
-        fails.append("Granite look must be handed the live-core tag sheet")
+    if "tag_sheet_beneath" not in run_src:
+        fails.append("Granite look/sheet must be handed the beneath tag sheet")
+    if 'low == "/sheet"' not in run_src:
+        fails.append("/sheet summons is missing")
+    if 'low == "/keep"' not in run_src:
+        fails.append("/keep (judge the proposal) is missing")
+    if "beneath=True" not in run_src:
+        fails.append("/sheet must measure the beneath window, not the face")
+    sheet_fn = model_src.split("def sheet(", 1)[1].split("def walker(", 1)[0]
+    if "walk_up" not in sheet_fn and "WALK" not in sheet_fn:
+        fails.append("sheet() must POST to :8081, never the face")
+    if "The face at" not in sheet_fn:
+        fails.append("sheet() must refuse to fall back to the face")
     if "granite_l2_tags" not in stack_src:
         fails.append("path_stack must have granite_l2_tags")
     run_chunk = stack_src.split("def run_stack(", 1)[1].split(

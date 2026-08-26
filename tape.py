@@ -13,6 +13,7 @@ CLERK_LABELS = (
     "STAMP", "SHAPE", "DECLARED", "SEQUEL", "WALK", "LOOK",
     "COMMENT", "ENGINE", "HELD", "RELEASED",
     "PROBE", "PREMISE", "RENDERED", "PLACED", "LAW",
+    "ASK", "CLOSED", "REVISES", "RESET",
 )
 
 QUIZ_OPENERS = (
@@ -57,54 +58,35 @@ def is_training_loop_line(line):
     return False
 
 
-def is_divider(line):
-    """Clerk slab in ── ──. Same family as extra speech / prior record."""
-    s = (line or "").strip()
-    if len(s) < 4:
-        return False
-    return s.startswith("──") and s.endswith("──")
-
-
-def is_clerk_chrome(line):
-    """A line that is minutes, not speech: empty, a divider, or NAME:."""
-    s = (line or "").strip()
-    if not s:
-        return True
-    if is_divider(s):
-        return True
-    return clerk_label(s) is not None
-
-
-def is_echo_of_asked(line, asked):
-    """This line is the question coming back, not a new quiz."""
-    s = (line or "").strip()
-    a = (asked or "").strip()
-    if not s or not a:
-        return False
-    if s == a:
-        return True
-    return s in a
-
-
-def _peel_chrome(lines, asked=""):
-    """Drop leading clerk wrap and a parroted question. Speech starts after."""
-    i = 0
-    n = len(lines)
-    while i < n:
-        if is_clerk_chrome(lines[i]) or is_echo_of_asked(lines[i], asked):
-            i += 1
-            continue
-        break
-    return lines[i:]
+def _utf8_line_starts(raw):
+    """splitlines() rows and the UTF-8 byte offset of each in unstripped raw."""
+    raw = raw or ""
+    lines = raw.splitlines()
+    starts = []
+    pos = 0
+    for k, ln in enumerate(lines):
+        if k > 0:
+            if pos < len(raw) and raw[pos] == "\r":
+                pos += 1
+                if pos < len(raw) and raw[pos] == "\n":
+                    pos += 1
+            elif pos < len(raw) and raw[pos] == "\n":
+                pos += 1
+        starts.append(len(raw[:pos].encode("utf-8")))
+        pos += len(ln)
+    return lines, starts, len(raw.encode("utf-8"))
 
 
 def split_tape(raw, asked=""):
-    """Return (face, sequel). Either may be empty. Face keeps going until a cut.
+    """Return (face, sequel, cut_byte). Face keeps going until a cut.
 
-    A quiz opener cuts only after real speech is already in the face, and
-    not when the line is the question he just typed (the wrap echoing ASKED).
+    cut_byte is the UTF-8 offset into unstripped raw where sequel begins.
+    After R4 the face is a prefix: raw_utf8[:cut_byte] is that span.
+    asked is unused (R4 removed asked-echo). Kept so callers do not drift.
     """
-    lines = (raw or "").splitlines()
+    del asked
+    raw = raw or ""
+    lines, starts, nbytes = _utf8_line_starts(raw)
     face = []
     had_content = False
     cut = None
@@ -117,31 +99,61 @@ def split_tape(raw, asked=""):
             cut = i
             break
         if had_content and any(x.strip() for x in face) and is_quiz_opener(s):
-            if is_echo_of_asked(s, asked):
-                face.append(ln)
-                continue
-            if not any(not is_clerk_chrome(x) for x in face):
-                face.append(ln)
-                continue
             cut = i
             break
         if is_training_loop_line(s):
-            # The fox / # Input loop is not a sequel worth keeping as speech.
-            # Cut here; caller treats an empty-or-junk face as no answer.
             if any(x.strip() and not is_training_loop_line(x) for x in face):
                 cut = i
                 break
             if not any(x.strip() for x in face):
-                # started with the loop — no face at all
-                return "", "\n".join(lines).strip()
+                return "", "\n".join(lines).strip(), 0
             cut = i
             break
         face.append(ln)
     if cut is None:
-        kept = _peel_chrome(lines, asked)
-        return "\n".join(kept).strip(), ""
-    kept = _peel_chrome(lines[:cut], asked)
-    return "\n".join(kept).strip(), "\n".join(lines[cut:]).strip()
+        return "\n".join(lines).strip(), "", nbytes
+    cut_byte = starts[cut] if cut < len(starts) else nbytes
+    return (
+        "\n".join(lines[:cut]).strip(),
+        "\n".join(lines[cut:]).strip(),
+        cut_byte,
+    )
+
+
+def _take_caret_token(s, needle):
+    """Remove one ^ or ^^ at a token boundary. No value after the sigil."""
+    start = 0
+    n = len(needle)
+    while True:
+        j = s.find(needle, start)
+        if j < 0:
+            return False, s
+        if j > 0 and s[j - 1] not in " \t\n":
+            start = j + 1
+            continue
+        after = s[j + n:]
+        if needle == "^" and after.startswith("^"):
+            start = j + 1
+            continue
+        if after[:1] not in ("", " ", "\t", "\n"):
+            start = j + 1
+            continue
+        before = s[:j].rstrip()
+        rest = after.strip()
+        glued = (before + " " + rest).strip() if before else rest
+        return True, glued
+
+
+def parse_score_place(msg):
+    """^ fold or ^^ raw, token boundary. Returns (mode_or_none, message)."""
+    s = msg or ""
+    found, rest = _take_caret_token(s, "^^")
+    if found:
+        return "raw", rest
+    found, rest = _take_caret_token(s, "^")
+    if found:
+        return "fold", rest
+    return None, s
 
 
 def _take_bang(text, needle):
@@ -176,6 +188,66 @@ def parse_bang_path(msg):
     """!path <method> anywhere. Returns (declared, message_unchanged)."""
     declared, _ = _take_bang(msg, "!path")
     return declared, msg or ""
+
+
+def parse_ask_line(msg):
+    """!ask <question> as the whole line. None if not an ask."""
+    s = (msg or "").strip()
+    if len(s) < 4 or s[:4].lower() != "!ask":
+        return None
+    rest = s[4:]
+    if rest[:1] not in ("", " ", "\t"):
+        return None
+    return rest.strip()
+
+
+def parse_closed_line(msg):
+    """!closed <ref-or-index>. None if not a close."""
+    s = (msg or "").strip()
+    if len(s) < 7 or s[:7].lower() != "!closed":
+        return None
+    rest = s[7:]
+    if rest[:1] not in ("", " ", "\t"):
+        return None
+    return rest.strip()
+
+
+_REVISES_KEYS = ("rejected", "expanded", "narrowed", "invariant")
+
+
+def parse_revises_line(msg):
+    """/revises <ref> [key:\"note\" ...]. None if not revises.
+
+    Closed four keys, human-typed. Nothing is inferred.
+    """
+    s = (msg or "").strip()
+    if len(s) < 8 or s[:8].lower() != "/revises":
+        return None
+    rest = s[8:]
+    if rest[:1] not in ("", " ", "\t"):
+        return None
+    rest = rest.strip()
+    if not rest:
+        return "", {}, "need a turn ref or a seat number"
+    tok = rest.split(None, 1)[0]
+    notes_src = rest[len(tok):].strip()
+    notes = {}
+    while notes_src:
+        if ":" not in notes_src:
+            return tok, notes, "revises notes must be key:\"text\""
+        key, after = notes_src.split(":", 1)
+        key = key.strip()
+        if key not in _REVISES_KEYS:
+            return tok, notes, "revises key not in rejected|expanded|narrowed|invariant"
+        after = after.lstrip()
+        if not after.startswith('"'):
+            return tok, notes, "revises note must be quoted"
+        end = after.find('"', 1)
+        if end < 0:
+            return tok, notes, "revises note missing closing quote"
+        notes[key] = after[1:end]
+        notes_src = after[end + 1:].strip()
+    return tok, notes, ""
 
 
 def parse_hold_line(msg):

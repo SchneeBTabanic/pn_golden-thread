@@ -50,6 +50,19 @@ def run():
         if len(hblocks) < 2:
             fails.append("hostile pile was not a real keep")
 
+        # over-length tags must REFUSE, not truncate then keep
+        os.environ["GT_TURN_PILE"] = pile
+        long_val = "x" * 500
+        try:
+            pile_io.capture_append(
+                pile, "body\n",
+                [("act", "hold-a-thing"), ("path", "toward-a-named-place"),
+                 ("topic", long_val)])
+            fails.append("over-length tag string was kept")
+        except pile_io.PileError as e:
+            if "512" not in str(e) and "longer" not in str(e).lower():
+                fails.append(f"wrong refusal for over-length tags: {e}")
+
         # python-scribe header is a named refusal
         py = os.path.join(tmp, "old.txt")
         with open(py, "w", encoding="utf-8") as f:

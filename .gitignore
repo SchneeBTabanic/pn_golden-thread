@@ -13,6 +13,9 @@ piles/turns.txt
 piles/docs.txt
 piles/story.txt
 
+# local seam file — copy from env.example.sh
+env.sh
+
 # vendored dependencies live outside the repo (see DEPENDENCIES.md)
 deps/
 models/

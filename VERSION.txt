@@ -1,8 +1,3 @@
-talk-shell + summoned-web  2026-08-22
-previous: ../pn_golden-thread_v-2026-08-22-pre-tui-search
-earlier: ../pn_golden-thread_v-2026-08-20-pre-phase5
-gforth scribe snapshot: ../pn_gf-scribe-wb_v-2026-08-22-pre-re-extent
-default diary: piles/turns.pn (gForth grammar)
-tag sheet Granite reads: ../pn_gf-scribe-wb/TAGS-gforth.md
-instrument frozen: llama-hook/, relied.py, grammar pair, held pair, HOLD_BANNER
-no git commit; versions are sibling folders
+published 2026-08-26
+talk-shell, ledger, relied series, underside
+law: GoldenThread-v1.6.2-Triune-Cathedral.json (inoculated 2026-08-16)

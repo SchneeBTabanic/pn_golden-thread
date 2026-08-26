@@ -44,7 +44,11 @@ variable seam-first?
 
 : keep-stdin ( -- )
    seam-arg  seam-pile 1024 >fixed seam-pile# !
-   seam-arg  seam-tags 512  >fixed seam-tags# !
+   seam-arg
+   \ Measure BEFORE >fixed. Truncating first made keep's 512-byte
+   \ refusal see a string that already fitted, and wrote the cut.
+   dup 512 > abort" pn-scribe: REFUSED — tag string longer than 512 bytes"
+   seam-tags 512 >fixed seam-tags# !
    ['] .stdin-body  seam-tags seam-tags# @  seam-pile seam-pile# @  keep
    .kept-line ;
 
