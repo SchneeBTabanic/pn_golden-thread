@@ -173,18 +173,19 @@ gap you keep, not the number of commands you fire.
 From the clone, after `source env.sh`:
 
 ```
-# terminal 1 — face (outer out-breath)
+# terminal 1 — face (outer out-breath). 8B on GPU if you have one.
 ./scripts/run_llama_server.sh
 
-# terminal 2 — beneath (inner out-breath: sheet, bind, LOOK)
-PORT=8081 CTX=8192 MODEL="$MODEL" ./scripts/run_llama_server.sh
+# terminal 2 — beneath (sheet, bind, LOOK, hop). 2B on CPU.
+# NGL=0 is system RAM, not “no memory.” Last-N is GT_SCORE_HISTORY
+# (unset = raw). Do not put the 2B on VRAM next to an 8B face.
+NGL=0 PORT=8081 CTX=8192 MODEL="$MODEL_BENEATH" ./scripts/run_llama_server.sh
 
-# terminal 3 — talk
-# Dango /walk needs the project venv (torch + HF), not system python
-# unless that python already has GT_DANGO_SITE on its path.
-deps/venv/bin/python run.py
-# bare python3 run.py is fine for face talk + /sheet + /keep
-# if you do not need /walk
+# terminal 3 — talk (the client, not a third server)
+# Dango /walk needs torch on GT_DANGO_SITE; do not `activate` a venv
+# unless you mean that interpreter. bare python3 run.py is talk.
+python3 run.py
+# python3 run.py --repl   # old line, Return sends
 ```
 
 Dango does not share :8081. That port is only the 2B llama-server
@@ -205,10 +206,12 @@ Dango can still contend for RAM with the two llama-servers if
 weights stay resident; keep it cold while :8081 binds if the box
 is tight.
 
-CPU-only: `NGL=0` on both servers. Flash attention must stay off
-(`-fa off` is already in the launch script). If FA is on, talk still
-works; every RELIED reading is a named refusal — the inner in-breath
-during speech is then mute.
+`NGL` is GPU layers, not the thread. Face 8B on GPU: `NGL=99` at
+`:8080`. Beneath 2B: `NGL=0` at `:8081` (CPU / system RAM). No GPU:
+`NGL=0` on both. Flash attention stays off (`-fa off` is already in
+the launch script). If FA is on, talk still works; every RELIED
+reading is a named refusal — the inner in-breath during speech is
+then mute. Unset `GT_SCORE_HISTORY` for talk (`raw`). `none` is lab.
 
 TUI: Enter makes a new line; Ctrl+Enter / Ctrl+S / Ctrl+J sends; Esc
 returns to the talk tab; summons open other tabs. Kill the shell and

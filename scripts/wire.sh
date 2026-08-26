@@ -99,16 +99,17 @@ echo
 if [[ "$missing" -ne 0 ]]; then
   echo "Not ready. Fetch what is MISSING, edit MODEL= in env.sh if the GGUF"
   echo "filename differs, then:  source env.sh"
-  echo "CPU-only: add  export NGL=0  to env.sh"
+  echo "CPU-only: add  export NGL=0  to env.sh (both servers)."
+  echo "8B face on GPU: leave NGL=99 for :8080; beneath is NGL=0."
   exit 1
 fi
 
 echo "Ready. In every new terminal:"
 echo "  source $HERE/env.sh"
-echo "Face:"
+echo "Face (:8080, MODEL, NGL from env.sh):"
 echo "  ./scripts/run_llama_server.sh"
-echo "Beneath (/sheet) — second terminal:"
-echo "  PORT=8081 CTX=8192 MODEL=\"\$MODEL\" ./scripts/run_llama_server.sh"
-echo "Talk:"
+echo "Beneath (:8081, 2B, CPU — NGL is layers, not last-N):"
+echo "  NGL=0 PORT=8081 CTX=8192 MODEL=\"\$MODEL_BENEATH\" ./scripts/run_llama_server.sh"
+echo "Talk (client, not a third server; do not set GT_SCORE_HISTORY=none):"
 echo "  python3 run.py"
 exit 0

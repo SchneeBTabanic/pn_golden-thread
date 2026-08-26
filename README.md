@@ -65,16 +65,15 @@ Copy the example, then change only what is true of your files:
 
 ```sh
 cp env.example.sh env.sh
-# Open env.sh in an editor. Usually two lines:
-#   MODEL=   the GGUF you put in models/ (if the filename differs, change this)
-#   NGL=0    if you built llama-server without a GPU (add this line)
+# Open env.sh. MODEL= is the face GGUF (8B if you have VRAM).
+# MODEL_BENEATH= is the 2B for :8081. NGL is GPU layers, not last-N.
 ./scripts/wire.sh           # names what is still MISSING; does not download
 source env.sh               # load those paths into this terminal
 python3 run_tests.py        # no model, no server — fails by name if a seam is missing
 ./scripts/run_llama_server.sh
-# second terminal — /sheet POSTs here, never the face. Same clone dir:
+# second terminal — beneath. CPU. Different GGUF. Never the talk face:
 source env.sh
-PORT=8081 CTX=8192 MODEL="$MODEL" ./scripts/run_llama_server.sh
+NGL=0 PORT=8081 CTX=8192 MODEL="$MODEL_BENEATH" ./scripts/run_llama_server.sh
 python3 run.py
 ```
 
@@ -93,8 +92,9 @@ what is true of your files:
 
 | Line | When to touch it |
 |---|---|
-| `MODEL=` | If the GGUF in `models/` is not named `granite-3.3-2b-Q4_K_M.gguf`, set this to the real filename. |
-| `NGL=0` | Add this line if you built llama-server without a GPU. |
+| `MODEL=` | Face GGUF (`:8080`). 8B if you have VRAM; 2B is enough to talk on CPU. |
+| `MODEL_BENEATH=` | 2B GGUF for `:8081`. Do not reuse the 8B here. |
+| `NGL` | GPU *layers* for the face launch. Not conversation memory. `99` = VRAM; `0` = CPU / system RAM. |
 
 Then `source env.sh` so this terminal can see those paths.
 
@@ -137,15 +137,21 @@ Ready. In every new terminal:
   source /path/to/pn_golden-thread/env.sh
 Face:
   ./scripts/run_llama_server.sh
-Beneath (/sheet) — second terminal:
-  PORT=8081 CTX=8192 MODEL="$MODEL" ./scripts/run_llama_server.sh
+Beneath (/sheet, bind, LOOK, hop) — second terminal, CPU:
+  NGL=0 PORT=8081 CTX=8192 MODEL="$MODEL_BENEATH" ./scripts/run_llama_server.sh
 Talk:
   python3 run.py
 ```
 
-CPU-only: `NGL=0` on both. The 2B at `:8081` needs `-c 8192` so the **whole**
-`TAGS-gforth.md` fits. A live-core is not the sheet; this summons will not
-amputate it.
+If the face is 8B on a GPU, **do not** put the 2B on VRAM as well.
+`NGL=0` on `:8081` is system RAM. That is llama.cpp’s ordinary CPU
+path. `NGL` is not last-N. Last-N is `GT_SCORE_HISTORY` (unset =
+`raw`, a thread). `GT_SCORE_HISTORY=none` is lab isolation; do not
+set it for talk.
+
+A box with no GPU: `NGL=0` on **both** servers. The 2B at `:8081`
+still needs `-c 8192` so the **whole** `TAGS-gforth.md` fits. A
+live-core is not the sheet; this summons will not amputate it.
 
 `/sheet` uses that 2B twice: first it proposes `@act` / `@path` lines, then
 it **binds** — ordinary sentences asking whether those lines still name a
@@ -188,10 +194,12 @@ works without RELIED — it does not silently use another machine's paths.
    makes every RELIED reading a named refusal.
 
    A VM usually has **no GPU passthrough** unless someone configured it.
-   That is normal. Use the CPU cmake line and `NGL=0`. Granite **2B**
-   Q4_K_M is enough to talk on CPU (face `:8080` and beneath `:8081`).
-   8B on CPU is possible and slow; it is not a second kind of
-   calculation. 8B on GPU is speed and VRAM, not a RELIED requirement.
+   That is normal. Use the CPU cmake line and `NGL=0` on both servers.
+   If the face *is* 8B on GPU (`NGL=99` at `:8080`), run the 2B
+   beneath at `:8081` with `NGL=0` (system RAM). Two GGUFs on one GPU
+   is how VRAM dies. Granite **2B** Q4_K_M is enough for beneath on
+   CPU. 8B on CPU is possible and slow. 8B on GPU is speed and VRAM,
+   not a RELIED requirement.
 3. **`LLAMA_SERVER` and `MODEL` have no lab default.** Copy
    `env.example.sh` to `env.sh` and source it. A leftover path from
    another disk will not be guessed.
@@ -204,7 +212,8 @@ works without RELIED — it does not silently use another machine's paths.
    working input, not docs. `/sheet` in `run.py` hands that whole file to
    the 2B at `:8081`. Cloning the scribe without starting that second
    server means `/sheet` refuses by name (`No beneath server at …:8081`).
-   Same patched `llama-server` binary, second process, 2B GGUF, `-c 8192`.
+   Same patched `llama-server` binary, second process, 2B GGUF,
+   `-c 8192`, `NGL=0` (CPU) if the face is already on the GPU.
    The Python scribe is only for HTML `url:` reduction; talk does not need
    it.
 6. **`/walk` (Dango) is not llama.cpp, and it is not a toy extra.**

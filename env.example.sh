@@ -30,16 +30,22 @@ fi
 
 # --- the patched llama.cpp server (patches/ + llama-hook/) -----------------
 export LLAMA_SERVER="$ROOT/deps/llama.cpp/build/bin/llama-server"
-export MODEL="$ROOT/models/granite-3.3-2b-Q4_K_M.gguf"
-# Face is :8080 (run.py talk). /sheet then /bind POST to :8081 — same
-# 2B process, CTX=8192 so the whole TAGS-gforth.md fits. LOOK too.
+# Face GGUF (:8080 talk). 8B if you have a GPU. 2B is enough to talk on CPU.
+export MODEL="$ROOT/models/granite-3.3-8b-Q4_K_M.gguf"
+# Beneath GGUF (:8081 sheet/bind/LOOK/hop). Second process. 2B on CPU so it
+# does not fight the 8B for VRAM. llama.cpp's job on CPU is system RAM.
+export MODEL_BENEATH="$ROOT/models/granite-3.3-2b-Q4_K_M.gguf"
 export GT_LLAMA="http://127.0.0.1:8080"
 export GT_WALK="http://127.0.0.1:8081"
 # Optional: /keep refuses until bind has spoken.
 # export GT_BIND_REQUIRED=1
 
-# GPU offload. CPU-only build: export NGL=0
+# NGL is GPU *layers*, not conversation memory. 99 = offload to VRAM (face).
+# Beneath launch uses NGL=0 (CPU / system RAM). Do not put both on the GPU
+# when the 8B already fills VRAM.
 export NGL="${NGL:-99}"
+# Last-N / thread memory is GT_SCORE_HISTORY. Unset = raw (talk default).
+# Do not export GT_SCORE_HISTORY=none unless you mean lab isolation.
 
 # --- /walk Japanese (Dango). Face talk can start without it; /walk cannot.
 # Dango is torch+transformers in-process, not llama.cpp. The talk venv from
