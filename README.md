@@ -39,9 +39,9 @@ git clone https://github.com/ggml-org/llama.cpp.git deps/llama.cpp
 cd deps/llama.cpp && git checkout cea560f4
 git apply ../../patches/llama.cpp-b8461-gt-relied.patch
 cp ../../llama-hook/gt-relied.cpp ../../llama-hook/gt-relied.h tools/server/
-# GPU:
+# GPU (NVIDIA, not a typical VM):
 cmake -B build -DGGML_CUDA=ON && cmake --build build -j --target llama-server
-# CPU-only, instead:
+# CPU-only (no GPU, or a VM that does not pass one through):
 # cmake -B build && cmake --build build -j --target llama-server
 cd ../..
 
@@ -172,9 +172,18 @@ works without RELIED — it does not silently use another machine's paths.
    one (2B Q4_K_M is enough to talk; 8B if you have VRAM), put it in
    `models/`, set `MODEL=` in `env.sh`. The launch script exits if this
    is unset.
-2. **CUDA is not an apt package here.** GPU build needs the toolkit you
-   actually have. CPU-only: cmake without `-DGGML_CUDA=ON`, and `NGL=0`
-   in `env.sh`.
+2. **A GPU is not required for talk, and RELIED is not GPU-only math.**
+   RELIED is a **patch** in llama.cpp that reads attention softmax
+   (`kq_soft_max`) while the model decodes. That needs the patched
+   `llama-server` and **`-fa off`**. It does **not** need CUDA. A stock
+   server talks; it cannot emit RELIED. Flash attention on (even on GPU)
+   makes every RELIED reading a named refusal.
+
+   A VM usually has **no GPU passthrough** unless someone configured it.
+   That is normal. Use the CPU cmake line and `NGL=0`. Granite **2B**
+   Q4_K_M is enough to talk on CPU (face `:8080` and beneath `:8081`).
+   8B on CPU is possible and slow; it is not a second kind of
+   calculation. 8B on GPU is speed and VRAM, not a RELIED requirement.
 3. **`LLAMA_SERVER` and `MODEL` have no lab default.** Copy
    `env.example.sh` to `env.sh` and source it. A leftover path from
    another disk will not be guessed.
