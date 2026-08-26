@@ -5,7 +5,9 @@ whole, on stdout. Python stamps what can be decided without interpretation,
 on stderr. Each turn is captured into a scribe pile.
 
 Not GTPS-Agent. Not Vessel. Does not retrieve, rank, embed, or inject the
-48 clauses. `file:` places a file you named, whole, or refuses.
+48 clauses. `file:` places a file you named, or refuses. If the file
+fits the byte cap but not `n_ctx`, a **document-order prefix** is
+placed and dropped paragraphs are named. Not a relevance pick.
 
 This tree has no lab-machine paths. A clone on a new disk works if you
 follow the block below **while you still have a network**, then you can
@@ -158,6 +160,12 @@ sheet sitting named.
 `NGL` is not last-N. Last-N is `GT_SCORE_HISTORY` (unset = `raw`, a
 thread). `GT_SCORE_HISTORY=none` is lab isolation; do not set it for
 talk.
+
+`file:` / `url:` / `html:` fill the face window in **document order**.
+`GT_FILE_MAX_BYTES` is a read cap. What enters Granite is a prefix of
+paragraphs that still leaves room for `n_predict` inside `n_ctx`.
+Dropped paragraphs are named (`DROPPED: paragraphs K–N … not a
+relevance pick`). This is not GTPS-Agent’s scored selector.
 
 A box with no GPU: `NGL=0` on **both** servers. The 2B at `:8081`
 still needs `-c 8192` so the **whole** `TAGS-gforth.md` fits. A

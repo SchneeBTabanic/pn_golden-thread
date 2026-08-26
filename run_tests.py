@@ -15,6 +15,7 @@ SUITES = [
     "tests/test_echo.py",
     "tests/test_quantities.py",
     "tests/test_file_read.py",
+    "tests/test_place_fit.py",
     "tests/test_law.py",
     "tests/test_no_selection.py",
     "tests/test_examine.py",

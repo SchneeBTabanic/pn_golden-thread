@@ -258,10 +258,15 @@ Nothing is looked up for you. You type the path or the URL.
 
 | sigil | what happens |
 |---|---|
-| `file: path question` | whole file, or refuse |
-| `html: path question` | saved HTML, reduced by the Python scribe, or refuse |
-| `url:` / `fetch: URL question` | trafilatura main text, whole, or refuse |
+| `file: path question` | the file, or refuse. If it will not fit `n_ctx`: document-order prefix; DROPPED named |
+| `html: path question` | saved HTML, reduced by the Python scribe, or refuse. Same `n_ctx` cut. |
+| `url:` / `fetch: URL question` | trafilatura main text, or refuse. Same `n_ctx` cut. |
 | `search: query` | hit list only (title, url, snippet). No page fetched |
+
+A file under `GT_FILE_MAX_BYTES` can still be too big for the face
+window. Paragraphs are kept from the start until `n_ctx` minus last-N,
+the question, and `n_predict`. The cut is named. It is not a relevance
+pick.
 
 This is the answer to “the model went and got something I did not ask
 it to get.” If you want a page, you name it with `url:` after you have

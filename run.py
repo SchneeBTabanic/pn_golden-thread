@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import file_read                                          # noqa: E402
 import law as law_module                                  # noqa: E402
 import model                                              # noqa: E402
+import place_fit                                          # noqa: E402
 import turn_record                                        # noqa: E402
 from examine import (  # noqa: E402
     clock, dial_clock, held_clock, press_clock, probe_clock, probe_same,
@@ -731,6 +732,76 @@ def _window_refuse(prompt):
         "Place a smaller extract, raise CTX on :8080, or url: a smaller page. "
         "Nothing was asked of the model."
     )
+
+
+def _count_place_tokens(text):
+    try:
+        return len(model.tokenize(text or "", add_special=False))
+    except model.ServerDown:
+        return place_fit.estimate_tokens(text)
+
+
+def _fit_place_to_window(got, overhead_user, system):
+    """Document-order prefix that leaves room for generation. No ranking."""
+    info = model.loaded_model()
+    ctx = 0
+    if isinstance(info, dict):
+        try:
+            ctx = int(info.get("n_ctx") or 0)
+        except (TypeError, ValueError):
+            ctx = 0
+    body = getattr(got, "content", "") or ""
+    if ctx <= 0:
+        cap = os.environ.get("GT_PLACE_TOKEN_BUDGET", "")
+        try:
+            budget = int(cap) if cap.strip() else 1200
+        except ValueError:
+            budget = 1200
+    else:
+        overhead = model.executor_prompt(
+            system or "", overhead_user or "", history_pairs=None, grammar=None)
+        n_over = _count_place_tokens(overhead)
+        budget = ctx - int(model.EXECUTOR_MAX_TOKENS) - n_over - 40
+        cap = os.environ.get("GT_PLACE_TOKEN_BUDGET", "").strip()
+        if cap:
+            try:
+                budget = min(budget, int(cap))
+            except ValueError:
+                pass
+    kept, n_kept, n_all, dropped_from = place_fit.fit_in_order(
+        body, budget, _count_place_tokens)
+    drop = place_fit.drop_note(n_kept, n_all, dropped_from)
+    if not kept:
+        return None, (
+            "PLACED TEXT WILL NOT FIT the face window: the first paragraph "
+            "is larger than the remaining " + str(max(0, budget))
+            + " tokens (n_ctx minus last-N, the question, and n_predict). "
+            "Nothing was asked of the model."
+        )
+    return kept, drop
+
+
+def _placed_block(mouth, got, drop=""):
+    if mouth == "file":
+        extra = ""
+        red = getattr(got, "reduction", "") or ""
+        if red:
+            extra = ", " + red
+        span = drop if drop else "whole"
+        path = getattr(got, "path", "") or ""
+        n = getattr(got, "bytes_read", 0) or len(
+            (getattr(got, "content", "") or "").encode("utf-8"))
+        return (
+            "[THE FILE YOU PLACED — " + path + ", " + str(n) + " bytes"
+            + extra + ", " + span
+            + ". This is content, not an obligation.]\n\n"
+            + (got.content or "")
+        )
+    if mouth == "fetch":
+        return web.page_block(got) + (("\n\n[" + drop + "]") if drop else "")
+    if mouth == "html":
+        return web.html_block(got) + (("\n\n[" + drop + "]") if drop else "")
+    return got.content or ""
 
 
 def _file_block(got):
@@ -1618,6 +1689,7 @@ class Talk:
         fetched_from = ""
         delivered = {}
         file_block = ""
+        placed_got = None
         mouth = "bare"
         if placed_path is not None:
             mouth = "file"
@@ -1635,6 +1707,7 @@ class Talk:
                 return "loop"
             fetched_from = got.path
             delivered[f"file: {got.path}"] = got.content
+            placed_got = got
             file_block = _file_block(got)
             if got.refused:
                 print(f"(note: {got.refused})")
@@ -1659,6 +1732,7 @@ class Talk:
                     return "loop"
                 fetched_from = got.target
                 delivered["url: " + got.target] = got.content
+                placed_got = got
                 file_block = web.page_block(got)
                 question = question_u or "I placed the page above. Read it."
                 placed_path = got.target
@@ -1709,6 +1783,7 @@ class Talk:
                     return "loop"
                 fetched_from = got.target
                 delivered["html: " + got.target] = got.content
+                placed_got = got
                 file_block = web.html_block(got)
                 question = question_h or "I placed the HTML above. Read it."
                 placed_path = got.target
@@ -1723,8 +1798,6 @@ class Talk:
         self.turn_n += 1
         genesis, keep = turn_record.gather_turns(HISTORY_TURNS)
         user_prompt = user_q
-        if file_block:
-            user_prompt = f"{file_block}\n\n{user_q}"
         banners, held_n = _hold_banner_text()
         hold_genesis, hold_blocks = turn_record.active_holds()
         hold_refs = [
@@ -1758,14 +1831,15 @@ class Talk:
                 fetched_text = _v
                 break
         if file_block and fetched_from:
-            try:
-                file_id, _g = turn_record.record_placed_file(
-                    fetched_from, fetched_text)
-                del _g
-                named.append((file_id, file_block))
-            except PileError as e:
-                print(f"turn pile refused the placed file: {e}",
-                      file=sys.stderr)
+            if not (placed_got is not None and mouth in ("file", "fetch", "html")):
+                try:
+                    file_id, _g = turn_record.record_placed_file(
+                        fetched_from, fetched_text)
+                    del _g
+                    named.append((file_id, file_block))
+                except PileError as e:
+                    print(f"turn pile refused the placed file: {e}",
+                          file=sys.stderr)
         if self.place_law and not self.skin_on and system:
             if not self.law_ref:
                 try:
@@ -1781,13 +1855,38 @@ class Talk:
             print("PLACED: none — skin is on; fold/raw not placed",
                   file=sys.stderr)
             place_mode = None
+        slab = ""
         if place_mode in ("fold", "raw") and keep:
             slab = history_slab(place_mode, genesis, keep)
+        elif place_mode in ("fold", "raw") and not keep:
+            place_mode = None
+        if placed_got is not None and mouth in ("file", "fetch", "html"):
+            trial = user_prompt
+            if slab:
+                trial = slab + "\n\n" + LIVE_MOUTH + "\n" + trial
+            fitted, drop = _fit_place_to_window(placed_got, trial, system)
+            if fitted is None:
+                print(drop or "PLACED TEXT WILL NOT FIT the face window.")
+                self.turn_n -= 1
+                return "loop"
+            placed_got.content = fitted
+            for k in list(delivered.keys()):
+                delivered[k] = fitted
+            file_block = _placed_block(mouth, placed_got, drop)
+            user_prompt = file_block + "\n\n" + user_prompt
+            fetched_text = fitted
+            try:
+                file_id, _g = turn_record.record_placed_file(
+                    fetched_from, fetched_text)
+                del _g
+                named.append((file_id, file_block))
+            except PileError as e:
+                print(f"turn pile refused the placed file: {e}",
+                      file=sys.stderr)
+        if slab:
             user_prompt = (
                 slab + "\n\n" + LIVE_MOUTH + "\n" + user_prompt
             )
-        elif place_mode in ("fold", "raw") and not keep:
-            place_mode = None
         hist = None
         gram = None
         if use_held_skin:
