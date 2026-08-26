@@ -202,6 +202,43 @@ def _guard_no_python_scribe_runtime():
     return 0
 
 
+def _guard_no_lab_machine_paths():
+    """A clone must not inherit this lab's absolute paths as defaults."""
+    needles = (
+        "/home/schnee/vessel-env",
+        "/mnt/data/Codeberg/llama_server_build",
+    )
+    rels = (
+        "web.py", "strip.py", "talk_tui.py", "path_stack.py", "law.py",
+        "run.py", "scripts/run_llama_server.sh",
+        "scripts/validate_relied_gguf.py", "tests/test_talk_tui.py",
+        "tests/test_path_stack.py",
+    )
+    bad = []
+    for rel in rels:
+        path = os.path.join(HERE, rel)
+        text = open(path, encoding="utf-8").read()
+        for needle in needles:
+            if needle in text:
+                bad.append(f"{rel} still names {needle}")
+    if bad:
+        for line in bad:
+            print("FAIL —", line)
+        return 1
+    print("PASS — runtime defaults are not this lab's machine paths")
+    return 0
+
+
+def _guard_series_note_is_named():
+    """A missing per-token series must print the note, not an empty underside."""
+    src = open(os.path.join(HERE, "run.py"), encoding="utf-8").read()
+    if "underside_line = _snote" not in src:
+        print("FAIL — run.py drops parse_series' note when there is no series")
+        return 1
+    print("PASS — missing series is named on the underside line")
+    return 0
+
+
 def main():
     rc = 0
     for rel in SUITES:
@@ -222,6 +259,8 @@ def main():
     rc |= _guard_walk_is_summoned()
     rc |= _guard_path_is_not_substring()
     rc |= _guard_no_python_scribe_runtime()
+    rc |= _guard_no_lab_machine_paths()
+    rc |= _guard_series_note_is_named()
     print()
     print("ALL PASSED" if rc == 0 else "FAILED")
     return rc

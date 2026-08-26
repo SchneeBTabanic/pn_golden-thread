@@ -2,11 +2,12 @@
 law.py — the sovereign's clauses, READ and never interpreted.
 
 This module does not rank, score, select, embed, or inject clauses.
-It loads the inoculated GoldenThread file from the texts of record
-in this working copy, exposes it by identity, and stops.
+It loads the inoculated GoldenThread file by identity, and stops.
 
-The JSON is not copied into this directory. Two copies of one law drift
-(Charter §3.13). GT_LAW may override the path. Missing file: hard-fail.
+GT_LAW overrides the path. Else the in-tree copy at law/ (what a GitHub
+clone ships). Else ../ref/canonical-docs/ (this working copy). Missing
+file: hard-fail. Two copies of one law drift (Charter §3.13) — do not
+edit one and leave the other.
 
 declared.txt is displayed and never acted on. A declaration that quietly
 acquired a trigger would be the failure this runtime exists to prevent.
@@ -17,9 +18,10 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_LAW = os.path.normpath(os.path.join(
-    HERE, "..", "ref", "canonical-docs",
-    "GoldenThread-v1.6.2-Triune-Cathedral.json"))
+_LAW_NAME = "GoldenThread-v1.6.2-Triune-Cathedral.json"
+IN_TREE_LAW = os.path.join(HERE, "law", _LAW_NAME)
+REF_LAW = os.path.normpath(os.path.join(
+    HERE, "..", "ref", "canonical-docs", _LAW_NAME))
 DECLARED_FILE = os.path.join(HERE, "law", "declared.txt")
 
 INTEGRITY = {
@@ -62,7 +64,12 @@ class Law:
 
 
 def _clause_path() -> str:
-    return os.environ.get("GT_LAW", DEFAULT_LAW)
+    override = os.environ.get("GT_LAW", "").strip()
+    if override:
+        return override
+    if os.path.isfile(IN_TREE_LAW):
+        return IN_TREE_LAW
+    return REF_LAW
 
 
 def load() -> Law:
@@ -73,7 +80,9 @@ def load() -> Law:
     except OSError as e:
         raise SystemExit(
             f"The clause file is missing at {path} ({e}). Refusing to run. "
-            f"Set GT_LAW or keep ref/canonical-docs/ next to this project.")
+            f"Set GT_LAW, or place {_LAW_NAME} at law/ "
+            f"(the clone ships it there), or keep ref/canonical-docs/ "
+            f"next to this project.")
     except json.JSONDecodeError as e:
         raise SystemExit(f"The clause file at {path} is not valid JSON ({e}).")
 

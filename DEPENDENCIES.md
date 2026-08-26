@@ -97,9 +97,11 @@ it for you; `scripts/run_llama_server.sh` calls it by full path.
 
 ## 4. Python packages
 
-Not in system Python. Put them in a venv and point `GT_WEB_SITE` at its
-`site-packages` — the runtime inserts that on `sys.path` rather than requiring
-you to run under that interpreter.
+Not in system Python. `requirements.txt` is the talk set. Put them in a venv
+and point `GT_WEB_SITE` at its `site-packages` — the runtime inserts that on
+`sys.path` rather than requiring you to run under that interpreter.
+`env.example.sh` derives the path from `deps/venv/bin/python` so it does not
+hardcode `python3.13`.
 
 ```
 textual==8.2.8         the TUI (talk_tui.py)
@@ -108,10 +110,14 @@ ddgs==9.11.3           search: — the hit list, nothing auto-fetched
 playwright==1.58.0     JS-only pages; GT_EDGE_BROWSER=0 disables
 rich                   pulled in by textual
 torch==2.6.0           only for the Dango path stack and the 4a profiler
-transformers==4.57.6   same
+transformers==4.57.6   same — not in requirements.txt
 ```
 
-`playwright install chromium` for the browser, if you want the JS edge.
+```sh
+python3 -m venv deps/venv
+deps/venv/bin/pip install -r requirements.txt
+deps/venv/bin/python -m playwright install chromium   # optional JS edge
+```
 
 ## 5. System tools
 
@@ -141,10 +147,8 @@ unmasked talk (`GT_OLLAMA`), not the architecture.
 
 ## Known rough edge
 
-`scripts/validate_relied_gguf.py` hardcodes its GGUF path with **no** env seam,
-unlike every other path in the build. Edit line 24 or ignore that script. It is
-recorded here rather than quietly patched, because the file is published exactly
-as it runs.
+`scripts/validate_relied_gguf.py` reads `MODEL` or `GT_GGUF`. It is not on the
+talk path. Ignore it until those are set.
 
 ## Not published
 

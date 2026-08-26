@@ -22,9 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIBE_PY = os.environ.get(
     "GT_SCRIBE",
     os.path.normpath(os.path.join(HERE, "..", "pn_scribe-wb", "scribe.py")))
-WEB_SITE = os.environ.get(
-    "GT_WEB_SITE",
-    "/home/schnee/vessel-env/lib/python3.13/site-packages")
+WEB_SITE = (os.environ.get("GT_WEB_SITE") or "").strip()
 SOURCE_MAX = int(os.environ.get("GT_SOURCE_MAX_BYTES", "8000000"))
 MIN_EXTRACT = 50
 FETCH_TIMEOUT = int(os.environ.get("GT_FETCH_TIMEOUT", "20"))

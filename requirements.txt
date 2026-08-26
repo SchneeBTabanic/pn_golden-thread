@@ -1,0 +1,6 @@
+# Talk TUI and url:/search:/html:. Install into deps/venv.
+# torch / transformers are NOT here — only for optional Dango / the profiler.
+textual==8.2.8
+trafilatura==2.0.0
+ddgs==9.11.3
+playwright==1.58.0

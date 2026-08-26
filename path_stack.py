@@ -144,10 +144,8 @@ def parse_proposal(text):
     return accepted, refused
 
 
-# run.py is started with system python3; torch lives in this env.
-DANGO_SITE = os.environ.get(
-    "GT_DANGO_SITE",
-    "/home/schnee/vessel-env/lib/python3.13/site-packages")
+# system python3; torch lives in the venv named by GT_DANGO_SITE.
+DANGO_SITE = (os.environ.get("GT_DANGO_SITE") or "").strip()
 
 _NAMED_EMPTY = ("not-yet-discerned", "ruled-none")
 # Longest first so away-from- wins over away- and from-.

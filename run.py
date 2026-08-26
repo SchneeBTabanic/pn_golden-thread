@@ -1767,6 +1767,9 @@ class Talk:
                 else:
                     underside_line = _pnote
                     underside_refusal = _pnote
+            else:
+                underside_line = _snote
+                underside_refusal = _snote
 
         dial_applied = bool(gt_dial) and resp.get("gt_dial_applied") is True
         press_applied = bool(gt_press) and resp.get("gt_press_applied") is True
@@ -1941,7 +1944,7 @@ def main():
     if sys.stdin.isatty() and sys.stdout.isatty():
         try:
             import talk_tui
-            import textual  # noqa: F401 — talk_tui puts vessel-env on sys.path
+            import textual  # noqa: F401 — talk_tui puts GT_WEB_SITE on sys.path
         except ImportError as e:
             print(
                 "compose-and-edit shell could not load (" + str(e)

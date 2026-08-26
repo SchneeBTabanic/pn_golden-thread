@@ -7,9 +7,7 @@ import sys
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
 
-WEB_SITE = os.environ.get(
-    "GT_WEB_SITE",
-    "/home/schnee/vessel-env/lib/python3.13/site-packages")
+WEB_SITE = (os.environ.get("GT_WEB_SITE") or "").strip()
 if WEB_SITE and os.path.isdir(WEB_SITE) and WEB_SITE not in sys.path:
     sys.path.insert(0, WEB_SITE)
 

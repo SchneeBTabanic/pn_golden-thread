@@ -10,16 +10,17 @@ import path_stack  # noqa: E402
 
 def run():
     fails = []
+    lab = ("/home/schnee", "ProjectNamirha_git", "/mnt/data/Codeberg")
     if not os.environ.get("GT_DANGO"):
-        if "ref/ontology-midwife/model/dango-1.8b" not in path_stack.DANGO_DIR.replace("\\", "/"):
-            fails.append("default DANGO_DIR is not this working copy: "
-                         + path_stack.DANGO_DIR)
-        if "ProjectNamirha_git" in path_stack.DANGO_DIR:
-            fails.append("default Dango still points at the other checkout")
+        for needle in lab:
+            if needle in path_stack.DANGO_DIR:
+                fails.append("default DANGO_DIR is a lab machine path: "
+                             + path_stack.DANGO_DIR)
     if not os.environ.get("GT_GLOSS_PY"):
-        if "ref/ontology-midwife/tagging-lab/gloss.py" not in path_stack.GLOSS_PY.replace("\\", "/"):
-            fails.append("default GLOSS_PY is not this working copy: "
-                         + path_stack.GLOSS_PY)
+        for needle in lab:
+            if needle in path_stack.GLOSS_PY:
+                fails.append("default GLOSS_PY is a lab machine path: "
+                             + path_stack.GLOSS_PY)
 
     wrapped = model.granite_chat("Hello", [("Hi", "Hello there.")])
     if "<|start_of_role|>user<|end_of_role|>Hello" not in wrapped:

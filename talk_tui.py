@@ -38,10 +38,8 @@ sys.path.insert(0, HERE)
 
 from talk_core import Transcript, prompt_label, turn_boundary  # noqa: E402
 
-# Textual lives in vessel-env site-packages, same as Dango's torch.
-WEB_SITE = os.environ.get(
-    "GT_WEB_SITE",
-    "/home/schnee/vessel-env/lib/python3.13/site-packages")
+# Textual lives in the venv named by GT_WEB_SITE.
+WEB_SITE = (os.environ.get("GT_WEB_SITE") or "").strip()
 if WEB_SITE and os.path.isdir(WEB_SITE) and WEB_SITE not in sys.path:
     sys.path.insert(0, WEB_SITE)
 
@@ -378,8 +376,8 @@ def main(argv=None):
         import textual  # noqa: F401
     except ImportError:
         raise SystemExit(
-            "textual not installed — run with vessel-env python, "
-            "or set GT_WEB_SITE to its site-packages")
+            "textual not installed — set GT_WEB_SITE to the venv "
+            "site-packages (see env.example.sh)")
     responder, boot_note = (make_live_responder() if live else (None, ""))
     app = _textual_app(responder=responder, boot_note=boot_note)
     app.run()

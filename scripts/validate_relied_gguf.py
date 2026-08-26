@@ -21,7 +21,9 @@ HAY = (
 )
 NEEDLE = "The special retrieval code is ALPHA-PLACED-SEVEN-NINE."
 ASK = "What is the special retrieval code? Copy it exactly."
-GGUF = "/mnt/data/models/granite-3.3-8b-Q4_K_M.gguf"
+GGUF = (os.environ.get("MODEL") or os.environ.get("GT_GGUF") or "").strip()
+if not GGUF:
+    sys.exit("Set MODEL or GT_GGUF to a .gguf path")
 N_LAYER = 40
 N_HEAD = 32
 

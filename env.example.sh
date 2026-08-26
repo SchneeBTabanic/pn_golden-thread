@@ -6,7 +6,7 @@
 # file to point it somewhere, stop and set the seam instead.
 #
 # The four marked REQUIRED are not optional: without them the test suite fails
-# six guards. That is not a broken clone, it is an unconfigured one.
+# named guards. That is not a broken clone, it is an unconfigured one.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -18,14 +18,20 @@ export GT_SCRIBE="$ROOT/deps/scribe-workbench/scribe.py"          # REQUIRED
 # --- REQUIRED: the ratified law, shipped in this repo ----------------------
 export GT_LAW="$ROOT/law/GoldenThread-v1.6.2-Triune-Cathedral.json"
 
-# --- python packages not in your system python -----------------------------
-# textual, trafilatura, ddgs, playwright  (and torch, if you use the path stack)
-export GT_WEB_SITE="$ROOT/deps/venv/lib/python3.13/site-packages"
-export GT_DANGO_SITE="$GT_WEB_SITE"
+# --- python packages (python3 -m venv deps/venv && pip install -r requirements.txt)
+if [[ -x "$ROOT/deps/venv/bin/python" ]]; then
+  export GT_WEB_SITE="$("$ROOT/deps/venv/bin/python" -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
+  export GT_DANGO_SITE="$GT_WEB_SITE"
+else
+  echo "env.sh: deps/venv is missing. python3 -m venv deps/venv && deps/venv/bin/pip install -r requirements.txt" >&2
+fi
 
-# --- the patched llama.cpp server (patches/) -------------------------------
+# --- the patched llama.cpp server (patches/ + llama-hook/) -----------------
 export LLAMA_SERVER="$ROOT/deps/llama.cpp/build/bin/llama-server"
 export MODEL="$ROOT/models/granite-3.3-2b-Q4_K_M.gguf"
+
+# GPU offload. CPU-only build: export NGL=0
+export NGL="${NGL:-99}"
 
 # --- optional: the Dango path stack ----------------------------------------
 # Only needed for !path / Japanese tagging. Everything else runs without it.

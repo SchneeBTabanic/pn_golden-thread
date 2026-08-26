@@ -18,10 +18,8 @@ import sys
 from dataclasses import dataclass, field
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# run.py is started with system python3; trafilatura/ddgs live in this env.
-WEB_SITE = os.environ.get(
-    "GT_WEB_SITE",
-    "/home/schnee/vessel-env/lib/python3.13/site-packages")
+# system python3; trafilatura/ddgs live in the venv named by GT_WEB_SITE.
+WEB_SITE = (os.environ.get("GT_WEB_SITE") or "").strip()
 
 MAX_BYTES = int(os.environ.get("GT_FILE_MAX_BYTES", "200000"))
 HIT_CAP = int(os.environ.get("GT_SEARCH_HITS", "5"))
@@ -214,8 +212,8 @@ def list_hits(query):
     except ImportError:
         return PlaceRead(
             ok=False, target=q, kind="search",
-            refused="ddgs not installed — run with vessel-env python, "
-                    "or set GT_WEB_SITE to its site-packages")
+            refused="ddgs not installed — set GT_WEB_SITE to the venv "
+                    "site-packages (see env.example.sh)")
     try:
         with DDGS() as client:
             raw = list(client.text(q, max_results=HIT_CAP))

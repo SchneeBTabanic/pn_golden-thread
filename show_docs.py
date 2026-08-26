@@ -14,7 +14,9 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.join(HERE, "piles", "docs.txt")
-SCRIBE = os.path.normpath(os.path.join(HERE, "..", "pn_scribe-wb", "scribe.py"))
+SCRIBE = os.environ.get(
+    "GT_SCRIBE",
+    os.path.normpath(os.path.join(HERE, "..", "pn_scribe-wb", "scribe.py")))
 
 PARTS = {
     "doorway": "part:doorway",

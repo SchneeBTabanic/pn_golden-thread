@@ -7,20 +7,24 @@
 # the same reason this one does: it calls the binary by full path.
 # Working directory does not matter.
 #
+#   source env.sh
 #   ./scripts/run_llama_server.sh
-#   ./scripts/run_llama_server.sh -m /mnt/data/models/granite-3.3-8b-Q4_K_M.gguf --port 8080 -c 4096
-#   MODEL=/mnt/data/models/granite-3.3-8b-Q4_K_M.gguf CTX=4096 ./scripts/run_llama_server.sh
+#   ./scripts/run_llama_server.sh -m /path/to/granite.gguf --port 8080 -c 4096
 #
 # Env (a matching CLI flag wins when both are set):
-#   LLAMA_SERVER  binary
-#   MODEL         .gguf path
+#   LLAMA_SERVER  binary — REQUIRED, no machine default
+#   MODEL         .gguf path — REQUIRED unless -m is passed
 #   PORT          default 8080   (run.py looks here)
 #   CTX           default 8192   (drop to 4096 for the 8B on 6 GB)
-#   NGL           default 99     (full GPU offload)
+#   NGL           default 99     (GPU). CPU-only build: NGL=0
 set -euo pipefail
 
-SERVER="${LLAMA_SERVER:-/mnt/data/Codeberg/llama_server_build/bin/llama-server}"
-MODEL="${MODEL:-/mnt/data/models/granite-3.3-2b-Q4_K_M.gguf}"
+if [[ -z "${LLAMA_SERVER:-}" ]]; then
+  echo "LLAMA_SERVER is unset." >&2
+  echo "Copy env.example.sh to env.sh, set the patched llama-server path, source env.sh." >&2
+  exit 2
+fi
+SERVER="$LLAMA_SERVER"
 PORT="${PORT:-8080}"
 CTX="${CTX:-8192}"
 NGL="${NGL:-99}"
@@ -49,10 +53,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "${MODEL:-}" ]]; then
+  echo "MODEL is unset." >&2
+  echo "Set MODEL to a .gguf path in env.sh, or pass -m /path/to/model.gguf." >&2
+  exit 2
+fi
 if [[ ! -x "$SERVER" ]]; then
   echo "llama-server not found or not executable: $SERVER" >&2
   echo "This is a compiled binary. Python cannot find it for you." >&2
-  echo "Build it (GTPS-Agent scripts/build_llama_server.sh) or set LLAMA_SERVER." >&2
+  echo "Build it from DEPENDENCIES.md (pin b8461, apply patch, copy llama-hook/) and set LLAMA_SERVER." >&2
   exit 1
 fi
 if [[ ! -f "$MODEL" ]]; then
