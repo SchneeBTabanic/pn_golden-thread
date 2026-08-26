@@ -41,7 +41,7 @@ export GT_WALK="http://127.0.0.1:8081"
 # GPU offload. CPU-only build: export NGL=0
 export NGL="${NGL:-99}"
 
-# --- optional: /walk Japanese (Dango). Talk does NOT need this. ------------
+# --- /walk Japanese (Dango). Face talk can start without it; /walk cannot.
 # Dango is torch+transformers in-process, not llama.cpp. The talk venv from
 # requirements.txt has no torch. Point GT_DANGO_SITE at a site-packages that
 # actually contains torch, or /walk names the refusal and talk still works.

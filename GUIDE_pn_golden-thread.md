@@ -467,7 +467,7 @@ The diary is kept.
 | Granite on `:8080` (2B enough to talk; 8B if you have VRAM) | face | outer out-breath | First answer. Inquire, bearings, comment, shape. |
 | RELIED hook on that server | inner in-breath | listens during speech | Mass on placed spans. Not truth. |
 | Granite on `:8081` with `-c 8192` | beneath | inner out-breath | `/sheet` propose, then bind. LOOK after `!path`. Must fit the whole `TAGS-gforth.md`. |
-| Dango (optional, `GT_DANGO`) | walk | side reveal | Torch/HF in the talk interpreter — not :8081. Needs project venv. |
+| Dango (`GT_DANGO`) | walk | Japanese reveal of `@act`/`@path` | Torch/HF in the talk interpreter — not :8081. Needs project venv. Face can talk without it; `/walk` then refuses by name. |
 | Optional L2 in `path_stack` | walk | side reveal | Propose `@act`/`@path` from Japanese + gloss + live core. Shown, not filed. |
 | gForth 0.7.3 + scribe leaves | pile | outer in-breath | keep, read, index, toc. Identity = offset + formed + genesis. |
 | Python clerk | stderr / diary | names | Form, splits, refusals, copies judged tags, files bind speech or names absence. |

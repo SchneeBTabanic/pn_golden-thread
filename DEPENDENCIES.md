@@ -141,12 +141,17 @@ sudo apt install pandoc poppler-utils
 | `granite-3.3-2b-Q4_K_M.gguf` | 1.5 GB | `MODEL` | default engine |
 | `granite-3.3-8b-Q4_K_M.gguf` | 4.9 GB | `MODEL` | the 8B path |
 | `granite-3.3-8b-hf` | 16 GB | `--hf` | offline 4a profiler only |
-| `dango-1.8b` | 3.5 GB | `GT_DANGO` | optional `/walk` Japanese (not talk) |
+| `dango-1.8b` | 3.5 GB | `GT_DANGO` | `/walk` Japanese reveal of `@act`/`@path` |
 
 Granite GGUF from `ibm-granite` on HuggingFace; quantisations are widely
-mirrored. **Only the 2B GGUF is needed to talk.**
+mirrored. **The 2B GGUF is enough for the face to talk.** That is boot,
+not a statement that verb-path is extra.
 
-Dango (optional `/walk` only) is **not** a GGUF and **not** llama.cpp.
+Dango is **not** a GGUF and **not** llama.cpp. It is the `/walk` mouth:
+Japanese so the doing is harder to hide. `@act` and `@path` are the
+live core of the tag sheet (Talmy motion-event). Face talk can start
+without Dango; `/walk` then refuses by name. `/sheet` and bind still
+run on the 2B.
 Checkpoint: <https://huggingface.co/mattashiho/dango-1.8b-100Btok>
 (Shiho Matta et al.; code <https://github.com/mattashiho233/dango>).
 Put the snapshot at `models/dango-1.8b` so `GT_DANGO` matches `env.example.sh`:

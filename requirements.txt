@@ -1,5 +1,5 @@
 # Talk TUI and url:/search:/html:. Install into deps/venv.
-# torch / transformers are NOT here — only for optional Dango / the profiler.
+# torch / transformers are NOT here — /walk (Dango) and the 4a profiler need them.
 textual==8.2.8
 trafilatura==2.0.0
 ddgs==9.11.3

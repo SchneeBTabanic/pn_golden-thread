@@ -28,7 +28,7 @@ git clone https://github.com/SchneeBTabanic/scribe-workbench-gforth.git deps/scr
 sudo apt install gforth pandoc poppler-utils build-essential cmake python3-venv python3-pip
 # GPU build also needs your CUDA toolkit. CPU-only: skip CUDA.
 
-# 3. Python (talk TUI + url:/search:). Not torch — that is optional Dango.
+# 3. Python (talk TUI + url:/search:). Torch is extra: /walk (Dango).
 python3 -m venv deps/venv
 deps/venv/bin/pip install -r requirements.txt
 # optional JS-only pages:
@@ -48,7 +48,7 @@ cd ../..
 # 5. a Granite 3.3 GGUF (2B Q4_K_M is enough to talk; 8B if you have VRAM)
 #    ibm-granite on HuggingFace; put the file in models/ and name it in env.sh
 #
-# Optional /walk only — Dango is HuggingFace safetensors, not a GGUF:
+# /walk (Dango) — HuggingFace safetensors, not a GGUF. Verb-path reveal:
 #    huggingface-cli download mattashiho/dango-1.8b-100Btok \
 #      --local-dir models/dango-1.8b
 ```
@@ -161,7 +161,9 @@ The clause file ships at `law/GoldenThread-v1.6.2-Triune-Cathedral.json`
 when `GT_LAW` is unset. Default: not placed. `/withlaw` places the whole
 file.
 
-Packages, seams, and optional Dango: `DEPENDENCIES.md`.
+Packages and seams: `DEPENDENCIES.md`. `@act` / `@path` are the living
+core (Talmy verb-path). Dango is how `/walk` *reveals* that in Japanese;
+the face can talk without it, but then that reveal is a named absence.
 
 How to move inside a sitting (posture, commands, bind, speculative
 trajectory): `GUIDE_pn_golden-thread.md`. Setup stays here. The tag lab
@@ -203,7 +205,15 @@ works without RELIED — it does not silently use another machine's paths.
    Same patched `llama-server` binary, second process, 2B GGUF, `-c 8192`.
    The Python scribe is only for HTML `url:` reduction; talk does not need
    it.
-6. **`/walk` (Dango) is optional and is not llama.cpp.**
+6. **`/walk` (Dango) is not llama.cpp, and it is not a toy extra.**
+   `@act` (a doing) and `@path` (a reaching) are how a turn stays
+   *living* in the pile — Talmy’s verb-path, the same hop Namirha has
+   been working. Dango is the Japanese mouth of that hop: English hides
+   the verb in a noun-bucket; Japanese makes it harder. `/sheet` + bind
+   on the 2B still use the tag sheet without Dango. **Talk can start
+   without Dango.** A sitting that never `/walk`s has skipped the
+   reveal, not discovered that verb-path does not matter. If Dango is
+   unset, `/walk` refuses by name.
 
 You do **not** start the program with `source deps/venv/bin/activate`.
 Startup is still:
