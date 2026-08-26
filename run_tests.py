@@ -182,6 +182,8 @@ def _guard_path_is_not_substring():
         "def stack_as_walk_text(", 1)[0]
     if "dango_l2_tags(" in run_chunk:
         fails.append("run_stack still asks Dango for English L2")
+    if "granite_hop_translate(" not in run_chunk:
+        fails.append("run_stack must Option-A hop before Dango")
     if fails:
         for f in fails:
             print("FAIL —", f)

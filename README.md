@@ -261,14 +261,13 @@ and `/sheet` work without this.
 If `/walk` **refuses by name** (weights, torch, gloss), that is the
 venv / path seam. Repair it, walk again.
 
-If `/walk` **loads** and then shows `Dango produced no Japanese`, that
-is a different silence. Read `dango-raw:`. Empty or English is F-L1:
-Dango does not hop English ASKED/ANSWERED into Japanese. It is not
-“no reliable `@act`/`@path`”, not a missing chat template, and not a
-different Dango checkpoint. Option A (Granite translates, Dango writes
-inside Japanese) is specified and not built. A Latin heading followed
-by real Japanese is still Japanese; `/walk` keeps from the first
-kana/kanji.
+`/walk` now runs Option A in front of Dango: the face translates the
+English turn into Japanese (you will see `hop-asked` / `hop-answered`),
+then Dango writes the movement sentence, then Leipzig. That hop is an
+add-on, not a different Dango. If the face hop is not Japanese, `/walk`
+refuses and prints `hop-raw:`. If Dango still prints no Japanese after
+a Japanese hop, read `dango-raw:` — that is Dango inside Japanese, not
+venv, and not a license to swap the checkpoint.
 
 The Leipzig glosser is `tagging-lab/gloss.py` in this repo, with
 `jmdict-lemmas.tsv`. It is not in a private ontology-midwife tree. It

@@ -196,11 +196,10 @@ If `/walk` **refuses by name** (weights missing, no torch at
 GT_DANGO_SITE, gloss.py / Sudachi missing) that is a seam. Repair
 the interpreter, then walk again.
 If `/walk` **loads** and then prints `Dango produced no Japanese`
-with a `dango-raw:` line, Dango spoke and the hop stopped at L1
-(English ASKED/ANSWERED in, no Japanese sentence out). That is
-not venv. It is not a different Dango variant. Option A (Granite
-translates, then Dango writes inside Japanese) is specified and
-not built.
+with a `dango-raw:` line after a disclosed hop (`hop-asked` /
+`hop-answered`), Dango had Japanese in and still did not write a
+movement sentence. That is not venv. It is not a different Dango
+variant. Do not swap the checkpoint.
 
 Dango can still contend for RAM with the two llama-servers if
 weights stay resident; keep it cold while :8081 binds if the box
@@ -379,17 +378,18 @@ exist. They are not part of sheet/bind.
 /shape key:value
 ```
 
-`/walk` — last turn into Japanese then Leipzig (Dango, Torch/HF —
-not llama.cpp). Reveal. Shown, not filed. Slow the first time
-(weights load). Ordinary talk does not call it. If Dango or the
-glosser is unset, /walk refuses by name (seam). Leipzig is the
-middle of this hop, not a display extra: the stems are the shape of
-`@act` / `@path`. If Dango loaded and the error is no Japanese, read
-`dango-raw:` — empty or English is F-L1, not a venv miss. Do not
-treat that as a reading of the turn, and do not swap the
-checkpoint. Option A is specified and not built. The gloss script
-is `tagging-lab/gloss.py` in this clone. Do not write a placeholder
-glosser.
+`/walk` — last turn: the **face** translates ASKED/ANSWERED into
+Japanese (Option A, disclosed — you will see `hop-asked` /
+`hop-answered`). That is not the movement. **Dango** then writes
+one Japanese movement-sentence from that Japanese. Leipzig glosses
+it. Reveal. Shown, not filed. Slow the first time (weights load).
+Ordinary talk does not call it. If Dango or the glosser is unset,
+/walk refuses by name (seam). If the face hop is not Japanese,
+/walk refuses and prints `hop-raw:`. Leipzig is the middle of this
+hop, not a display extra. The gloss script is `tagging-lab/gloss.py`.
+Do not write a placeholder glosser. Do not replace Dango: Option A
+adds a translation in front of it; it does not change who writes
+the movement.
 
 `/sheet` — last turn + whole tag sheet to `:8081`. Proposes, **then
 binds**. Print order: proposal, then bind speech. Shown, not filed.
@@ -869,10 +869,11 @@ understood. Do not build a cathedral where a doorway is needed.
   are speech until you judge.
 - Treating `/walk` as the binding pass.
 - Treating an empty /walk as one thing. A named refusal (no torch,
-  no weights, no Sudachi) is a seam. A load that then prints no
-  Japanese plus `dango-raw:` is F-L1. Those must not look the same.
-  Do not install rinna. Do not treat either as Dango’s judgment of
-  the turn.
+  no weights, no Sudachi) is a seam. A hop that is not Japanese
+  prints `hop-raw:`. Dango with Japanese in that still prints no
+  Japanese prints `dango-raw:`. Those must not look the same. Do
+  not install rinna. Do not treat any of them as Dango’s judgment
+  of the turn.
 - Writing a stub `gloss.py` so /walk “completes.” The real glosser
   ships in `tagging-lab/`. A missing Sudachi: `/walk` refuses. A
   passthrough pretends a missing gloss is a translated one. Leipzig

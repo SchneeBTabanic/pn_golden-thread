@@ -924,8 +924,8 @@ class Talk:
         if why:
             print("/walk is not ready: " + why + ". Talk still works.")
         else:
-            print("/walk summons Japanese then Leipzig on the last turn "
-                  "(slow first time). It does not file a tag.")
+            print("/walk: face translates (disclosed), Dango writes "
+                  "movement, then Leipzig. It does not file a tag.")
         print("/comment asks what the last record is for. Body only. No tag.")
         print("/sheet proposes on the last turn then binds on the 2B at :8081 (not the face).")
         print("/bind re-runs that bind. /keep files the proposal you judged, and names bind if it was silent.")
@@ -1224,7 +1224,8 @@ class Talk:
             answered = turn_record.field(last["body"], "ANSWERED")
             written_act = turn_record.tag_first(last, "act")
             written_path = turn_record.tag_first(last, "path")
-            print("PATH: summoned — Japanese + gloss. First time is slow…",
+            print("PATH: summoned — face translates (disclosed), "
+                  "Dango writes movement, then Leipzig. First time is slow…",
                   file=sys.stderr)
             sys.stderr.flush()
             rep = path_stack.run_stack(

@@ -3,11 +3,15 @@ path_stack.py — summoned Japanese → gloss → optional L2 display.
 
 /walk only. Talk does not run this. Proposed tags are never a filing order.
 
-  L1 Dango writes one Japanese sentence. It is not asked for English.
+  Option A hop: the face translates ASKED/ANSWERED into Japanese
+  (disclosed). That is not the movement sentence. Skip the hop when
+  the turn is already Japanese.
+  L1 Dango writes one Japanese movement-sentence from that Japanese.
+  It is not asked for English.
   gloss.py turns that into Leipzig English in Japanese order.
   If the turn already carries a written @act, L2 is skipped and the
-  written tag is witnessed. Otherwise Granite 8B (the face) writes
-  two tag lines from Japanese + gloss + the live-core tag sheet.
+  written tag is witnessed. Otherwise the face writes two tag lines
+  from Japanese + gloss + the live-core tag sheet.
   Proposed tags are shown, not filed.
 
   off_gloss is a display (stems not in the gloss). It does not veto.
@@ -465,6 +469,43 @@ def granite_l2_tags(japanese, gloss):
     return model.face(GRANITE_L2_SYSTEM, user)
 
 
+HOP_SYSTEM = (
+    "Translate the two fields into Japanese. Nothing else.\n"
+    "Do not explain. Do not summarize. Do not name a doing or a path.\n"
+    "Do not write a movement sentence. Translation only.\n"
+    "Write exactly two lines:\n"
+    "ASKED: <Japanese>\n"
+    "ANSWERED: <Japanese>\n"
+)
+
+
+def parse_hop_lines(text):
+    """ASKED: / ANSWERED: lines. No regex. Missing stays empty."""
+    asked, answered = "", ""
+    for ln in (text or "").splitlines():
+        s = ln.strip()
+        if s.startswith("ASKED:"):
+            asked = s[len("ASKED:"):].strip()
+        elif s.startswith("ANSWERED:"):
+            answered = s[len("ANSWERED:"):].strip()
+    return asked, answered
+
+
+def turn_already_japanese(asked, answered):
+    return looks_japanese(asked) and looks_japanese(answered)
+
+
+def granite_hop_translate(asked, answered):
+    """Option A: face translates. Not the movement. Dango still writes that."""
+    import model
+    user = "ASKED:\n" + (asked or "") + "\n\nANSWERED:\n" + (answered or "")
+    raw = model.face(HOP_SYSTEM, user, temperature=0.1)
+    ja_asked, ja_answered = parse_hop_lines(raw)
+    ja_asked = first_sentence(japanese_span(ja_asked) or ja_asked)
+    ja_answered = first_sentence(japanese_span(ja_answered) or ja_answered)
+    return raw, ja_asked, ja_answered
+
+
 def run_gloss(japanese):
     """Call tagging-lab/gloss.py. Returns (interlinear, raw_stdout)."""
     if not gloss_ready():
@@ -802,9 +843,31 @@ def run_stack(asked, answered, written_act="", written_path=""):
         "convergence": {},
         "exemplar_copy": False,
         "input_cut": "",
+        "hop_asked": "",
+        "hop_answered": "",
+        "hop_engine": "",
+        "hop_raw": "",
     }
     try:
-        raw_ja, cut_note = dango_japanese(asked, answered)
+        if turn_already_japanese(asked, answered):
+            ja_asked, ja_answered = asked, answered
+            report["hop_engine"] = "skipped — turn already Japanese"
+        else:
+            hop_raw, ja_asked, ja_answered = granite_hop_translate(
+                asked, answered)
+            report["hop_raw"] = hop_raw
+            report["hop_asked"] = ja_asked
+            report["hop_answered"] = ja_answered
+            report["hop_engine"] = (
+                "face — Option A translation, not the movement"
+            )
+            if not looks_japanese(ja_asked) or not looks_japanese(ja_answered):
+                report["error"] = (
+                    "Option A hop: face did not return Japanese "
+                    "ASKED/ANSWERED"
+                )
+                return report
+        raw_ja, cut_note = dango_japanese(ja_asked, ja_answered)
         report["input_cut"] = cut_note
         report["dango_raw"] = raw_ja
         # Drop a Latin heading first. Cutting the first line before that
@@ -893,10 +956,21 @@ def stack_as_walk_text(report):
         if len(raw) > 240:
             raw = raw[:240] + "…"
         lines.append("dango-raw: " + (raw or "(empty)"))
+    if report.get("hop_raw") and report.get("error"):
+        raw = " ".join((report.get("hop_raw") or "").split())
+        if len(raw) > 240:
+            raw = raw[:240] + "…"
+        lines.append("hop-raw: " + raw)
     if report.get("input_cut"):
         lines.append(report["input_cut"])
     if report.get("exemplar_copy"):
         lines.append("exemplar-copy: exact match against an L1 few-shot line")
+    if report.get("hop_engine"):
+        lines.append("hop: " + report["hop_engine"])
+    if report.get("hop_asked"):
+        lines.append("hop-asked: " + report["hop_asked"])
+    if report.get("hop_answered"):
+        lines.append("hop-answered: " + report["hop_answered"])
     if report.get("japanese"):
         lines.append("japanese: " + report["japanese"])
     if report.get("gloss"):

@@ -82,6 +82,32 @@ def run():
         fails.append("run_stack cuts the first sentence before dropping a Latin prefix")
     if "first_sentence(japanese_span(" not in run_chunk:
         fails.append("run_stack must drop a Latin prefix before first_sentence")
+    if "granite_hop_translate(" not in run_chunk:
+        fails.append("run_stack must Option-A hop through the face before Dango")
+    if run_chunk.find("granite_hop_translate(") > run_chunk.find("dango_japanese("):
+        fails.append("Option A hop must run before dango_japanese")
+    if "Do not write a movement sentence" not in path_stack.HOP_SYSTEM:
+        fails.append("HOP_SYSTEM must forbid Granite writing the movement")
+    if "@act" in path_stack.HOP_SYSTEM or "@path" in path_stack.HOP_SYSTEM:
+        fails.append("HOP_SYSTEM must not ask Granite for tags")
+    ha, hb = path_stack.parse_hop_lines(
+        "ASKED: 二たす二は何ですか。\nANSWERED: 四です。\n")
+    if ha != "二たす二は何ですか。" or hb != "四です。":
+        fails.append("parse_hop_lines lost the Japanese fields: "
+                     + repr((ha, hb)))
+    if not path_stack.turn_already_japanese("二たす二は何ですか。", "四です。"):
+        fails.append("Japanese turn must skip the hop")
+    if path_stack.turn_already_japanese("What is 2+2?", "4"):
+        fails.append("English turn must not skip the hop")
+    hop_txt = path_stack.stack_as_walk_text({
+        "source": "proposed",
+        "hop_engine": "face — Option A translation, not the movement",
+        "hop_asked": "二たす二は何ですか。",
+        "hop_answered": "四です。",
+        "path": "not-yet-discerned",
+    })
+    if "Option A translation, not the movement" not in hop_txt:
+        fails.append("walk text must disclose the hop: " + repr(hop_txt))
     src_run = open(os.path.join(HERE, "run.py"), encoding="utf-8").read()
     walk_chunk = src_run.split('if low == "/walk":', 1)[1].split(
         'if low == "/sheet":', 1)[0]
