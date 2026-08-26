@@ -75,6 +75,68 @@ python3 run.py
 Every new terminal needs `source env.sh` again. `wire.sh` will not overwrite
 an `env.sh` you already edited.
 
+Clone with **https** (`git clone https://github.com/….git`). You do not need
+SSH, a GitHub account, or anyone else's key.
+
+### What `env.sh` is
+
+A list of paths on **this** disk. The other `export` lines already point
+inside the clone (`deps/`, `law/`, `models/`). You do not invent those
+names. After `cp env.example.sh env.sh`, open `env.sh` and change only
+what is true of your files:
+
+| Line | When to touch it |
+|---|---|
+| `MODEL=` | If the GGUF in `models/` is not named `granite-3.3-2b-Q4_K_M.gguf`, set this to the real filename. |
+| `NGL=0` | Add this line if you built llama-server without a GPU. |
+
+Then `source env.sh` so this terminal can see those paths.
+
+### What `./scripts/wire.sh` prints — expected, not a crash
+
+It copies the example to `env.sh` if you have not yet, then checks each
+path. **MISSING is the script doing its job.** Fetch that part, run
+`wire.sh` again.
+
+If a part is not there yet:
+
+```
+wrote env.sh from env.example.sh          (first run only)
+
+checking seams from env.sh (ROOT=/path/to/pn_golden-thread)
+OK     gForth scribe directory
+       /path/to/pn_golden-thread/deps/scribe-workbench-gforth
+MISSING  face GGUF (MODEL)
+         expected: /path/to/pn_golden-thread/models/granite-3.3-2b-Q4_K_M.gguf
+
+GGUF files already in models/ (set MODEL= in env.sh to one of these):
+  (none — download a Granite 3.3 GGUF into models/)
+MISSING  gforth on PATH  (sudo apt install gforth)
+MISSING  Python venv site-packages
+         python3 -m venv deps/venv && deps/venv/bin/pip install -r requirements.txt
+
+Not ready. Fetch what is MISSING, edit MODEL= in env.sh if the GGUF
+filename differs, then:  source env.sh
+CPU-only: add  export NGL=0  to env.sh
+```
+
+If a GGUF is in `models/` under another name, that middle block lists
+the real files instead of `(none — …)`. Put that path on the `MODEL=`
+line.
+
+When everything is present:
+
+```
+Ready. In every new terminal:
+  source /path/to/pn_golden-thread/env.sh
+Face:
+  ./scripts/run_llama_server.sh
+Beneath (/sheet) — second terminal:
+  PORT=8081 CTX=8192 MODEL="$MODEL" ./scripts/run_llama_server.sh
+Talk:
+  python3 run.py
+```
+
 CPU-only: `NGL=0` on both. The 2B at `:8081` needs `-c 8192` so the **whole**
 `TAGS-gforth.md` fits. A live-core is not the sheet; this summons will not
 amputate it.
