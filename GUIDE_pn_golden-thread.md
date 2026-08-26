@@ -378,18 +378,17 @@ exist. They are not part of sheet/bind.
 /shape key:value
 ```
 
-`/walk` — last turn: the **face** translates ASKED/ANSWERED into
-Japanese (Option A, disclosed — you will see `hop-asked` /
-`hop-answered`). That is not the movement. **Dango** then writes
-one Japanese movement-sentence from that Japanese. Leipzig glosses
-it. Reveal. Shown, not filed. Slow the first time (weights load).
-Ordinary talk does not call it. If Dango or the glosser is unset,
-/walk refuses by name (seam). If the face hop is not Japanese,
-/walk refuses and prints `hop-raw:`. Leipzig is the middle of this
-hop, not a display extra. The gloss script is `tagging-lab/gloss.py`.
-Do not write a placeholder glosser. Do not replace Dango: Option A
-adds a translation in front of it; it does not change who writes
-the movement.
+`/walk` — last turn: **beneath** (`:8081`) translates question and
+reply into Japanese (Option A, disclosed — `hop-asked` /
+`hop-answered`). Never the talk face: that slot still holds last-N
+and the ── divider wrap; a hop there continues the wrap. The
+translation is not the movement. **Dango** then writes one Japanese
+movement-sentence from that Japanese. Leipzig glosses it. Reveal.
+Shown, not filed. If Dango or the glosser is unset, /walk refuses
+by name (seam). If the hop is not Japanese, /walk refuses and prints
+`hop-raw:`. Do not peel ── off a polluted face hop — that is the
+old clerk-chrome story. The gloss script is `tagging-lab/gloss.py`.
+Do not replace Dango: Option A adds a translation in front of it.
 
 `/sheet` — last turn + whole tag sheet to `:8081`. Proposes, **then
 binds**. Print order: proposal, then bind speech. Shown, not filed.

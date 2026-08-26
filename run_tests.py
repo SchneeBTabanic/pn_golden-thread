@@ -176,6 +176,15 @@ def _guard_path_is_not_substring():
         fails.append("sheet() must POST to :8081, never the face")
     if "The face at" not in sheet_fn:
         fails.append("sheet() must refuse to fall back to the face")
+    if "def hop(" not in model_src:
+        fails.append("model.hop is missing")
+    hop_fn = model_src.split("def hop(", 1)[1].split("def look(", 1)[0]
+    if "WALK" not in hop_fn:
+        fails.append("hop() must POST to :8081, never the talk face")
+    if "was not asked to hop" not in hop_fn:
+        fails.append("hop() must refuse to fall back to the face")
+    if "cache_prompt=False" not in hop_fn:
+        fails.append("hop() must not reuse a prompt cache from /sheet")
     if "granite_l2_tags" not in stack_src:
         fails.append("path_stack must have granite_l2_tags")
     run_chunk = stack_src.split("def run_stack(", 1)[1].split(

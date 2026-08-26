@@ -3,9 +3,10 @@ path_stack.py — summoned Japanese → gloss → optional L2 display.
 
 /walk only. Talk does not run this. Proposed tags are never a filing order.
 
-  Option A hop: the face translates ASKED/ANSWERED into Japanese
-  (disclosed). That is not the movement sentence. Skip the hop when
-  the turn is already Japanese.
+  Option A hop: the beneath server (:8081) translates the turn into
+  Japanese (disclosed). Never the talk face — that slot still holds
+  last-N and ── divider chrome. That translation is not the movement
+  sentence. Skip the hop when the turn is already Japanese.
   L1 Dango writes one Japanese movement-sentence from that Japanese.
   It is not asked for English.
   gloss.py turns that into Leipzig English in Japanese order.
@@ -470,25 +471,44 @@ def granite_l2_tags(japanese, gloss):
 
 
 HOP_SYSTEM = (
-    "Translate the two fields into Japanese. Nothing else.\n"
+    "Translate the question and the reply into Japanese. Nothing else.\n"
     "Do not explain. Do not summarize. Do not name a doing or a path.\n"
     "Do not write a movement sentence. Translation only.\n"
     "Write exactly two lines:\n"
-    "ASKED: <Japanese>\n"
-    "ANSWERED: <Japanese>\n"
+    "QUESTION: <Japanese>\n"
+    "REPLY: <Japanese>\n"
 )
 
 
 def parse_hop_lines(text):
-    """ASKED: / ANSWERED: lines. No regex. Missing stays empty."""
-    asked, answered = "", ""
+    """QUESTION: / REPLY: field bodies. No regex. Missing stays empty.
+
+    A field runs until the next key. Leading Latin in the body is dropped
+    by japanese_span (same clerk cut as L1), not by stripping ── by name.
+    """
+    asked_parts, answered_parts = [], []
+    mode = None
     for ln in (text or "").splitlines():
         s = ln.strip()
-        if s.startswith("ASKED:"):
-            asked = s[len("ASKED:"):].strip()
-        elif s.startswith("ANSWERED:"):
-            answered = s[len("ANSWERED:"):].strip()
-    return asked, answered
+        if s.startswith("QUESTION:"):
+            mode = "asked"
+            rest = s[len("QUESTION:"):].strip()
+            asked_parts = [rest] if rest else []
+            continue
+        if s.startswith("REPLY:"):
+            mode = "answered"
+            rest = s[len("REPLY:"):].strip()
+            answered_parts = [rest] if rest else []
+            continue
+        if mode == "asked":
+            asked_parts.append(ln)
+        elif mode == "answered":
+            answered_parts.append(ln)
+    asked = first_sentence(
+        japanese_span("\n".join(asked_parts)) or "\n".join(asked_parts))
+    answered = first_sentence(
+        japanese_span("\n".join(answered_parts)) or "\n".join(answered_parts))
+    return asked.strip(), answered.strip()
 
 
 def turn_already_japanese(asked, answered):
@@ -496,13 +516,14 @@ def turn_already_japanese(asked, answered):
 
 
 def granite_hop_translate(asked, answered):
-    """Option A: face translates. Not the movement. Dango still writes that."""
+    """Option A: beneath translates. Not the talk face. Dango writes movement."""
     import model
-    user = "ASKED:\n" + (asked or "") + "\n\nANSWERED:\n" + (answered or "")
-    raw = model.face(HOP_SYSTEM, user, temperature=0.1)
+    user = (
+        "Question:\n" + (asked or "")
+        + "\n\nReply:\n" + (answered or "")
+    )
+    raw = model.hop(HOP_SYSTEM, user)
     ja_asked, ja_answered = parse_hop_lines(raw)
-    ja_asked = first_sentence(japanese_span(ja_asked) or ja_asked)
-    ja_answered = first_sentence(japanese_span(ja_answered) or ja_answered)
     return raw, ja_asked, ja_answered
 
 
@@ -859,12 +880,13 @@ def run_stack(asked, answered, written_act="", written_path=""):
             report["hop_asked"] = ja_asked
             report["hop_answered"] = ja_answered
             report["hop_engine"] = (
-                "face — Option A translation, not the movement"
+                "beneath — Option A translation, not the movement, "
+                "not the talk face"
             )
             if not looks_japanese(ja_asked) or not looks_japanese(ja_answered):
                 report["error"] = (
-                    "Option A hop: face did not return Japanese "
-                    "ASKED/ANSWERED"
+                    "Option A hop: beneath did not return Japanese "
+                    "QUESTION/REPLY"
                 )
                 return report
         raw_ja, cut_note = dango_japanese(ja_asked, ja_answered)

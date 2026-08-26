@@ -261,13 +261,14 @@ and `/sheet` work without this.
 If `/walk` **refuses by name** (weights, torch, gloss), that is the
 venv / path seam. Repair it, walk again.
 
-`/walk` now runs Option A in front of Dango: the face translates the
-English turn into Japanese (you will see `hop-asked` / `hop-answered`),
-then Dango writes the movement sentence, then Leipzig. That hop is an
-add-on, not a different Dango. If the face hop is not Japanese, `/walk`
-refuses and prints `hop-raw:`. If Dango still prints no Japanese after
-a Japanese hop, read `dango-raw:` — that is Dango inside Japanese, not
-venv, and not a license to swap the checkpoint.
+`/walk` runs Option A in front of Dango on the **beneath** server
+(`:8081`), not the talk face. Talk’s `:8080` slot still holds last-N
+and ── divider chrome; a hop there continues the wrap. Beneath
+translates (you will see `hop-asked` / `hop-answered`), Dango writes
+the movement sentence, Leipzig glosses. If the hop is not Japanese,
+`/walk` refuses and prints `hop-raw:`. Do not scrape ── off face
+output. If Dango still prints no Japanese after a Japanese hop, read
+`dango-raw:`.
 
 The Leipzig glosser is `tagging-lab/gloss.py` in this repo, with
 `jmdict-lemmas.tsv`. It is not in a private ontology-midwife tree. It

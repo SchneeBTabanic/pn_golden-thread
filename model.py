@@ -178,7 +178,7 @@ def granite_chat(user_text, history_pairs=None):
 
 
 def _complete_llama(base, prompt, max_tokens, grammar=None, temperature=0.3,
-                    seed=None):
+                    seed=None, cache_prompt=True):
     payload = {
         "prompt": prompt,
         "n_predict": max_tokens,
@@ -190,6 +190,7 @@ def _complete_llama(base, prompt, max_tokens, grammar=None, temperature=0.3,
             "<|end_of_role|>",
             "<|start_of_role|>",
         ],
+        "cache_prompt": bool(cache_prompt),
     }
     if seed is not None:
         payload["seed"] = int(seed)
@@ -349,10 +350,26 @@ def comment(system_prompt, user_prompt):
 
 
 def face(system_prompt, user_prompt, max_tokens=None, temperature=0.2):
-    """Face only. Inquire and bearings. Not LOOK, not sheet, not bind."""
+    """Face only. Inquire and bearings. Not LOOK, not sheet, not bind, not hop."""
     prompt = _as_chat(system_prompt, user_prompt)
     return _complete(prompt, max_tokens or COMMENT_MAX_TOKENS, grammar=None,
                      temperature=temperature).strip()
+
+
+def hop(system_prompt, user_prompt):
+    """Option A translation. Hits GT_WALK. Never the talk face.
+
+    Talk's :8080 slot still holds last-N / divider chrome. A hop that
+    reuses that mouth continues the wrap. Beneath is a second process.
+    """
+    if not walk_up():
+        raise ServerDown(
+            f"No beneath server at {WALK}. Start the CPU 2B there. "
+            f"The face at {LLAMA} was not asked to hop.")
+    prompt = _as_chat(system_prompt, user_prompt)
+    return _complete_llama(
+        WALK, prompt, COMMENT_MAX_TOKENS, grammar=None,
+        temperature=0.1, cache_prompt=False).strip()
 
 
 def look(system_prompt, user_prompt):
