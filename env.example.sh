@@ -8,7 +8,7 @@
 # The seams marked REQUIRED are not optional: without them the test suite
 # fails named guards. That is not a broken clone, it is an unconfigured one.
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- REQUIRED: the gForth scribe (see DEPENDENCIES.md) ---------------------
 export GT_GF_SCRIBE="$ROOT/deps/scribe-workbench-gforth"          # REQUIRED
@@ -32,6 +32,10 @@ fi
 # --- the patched llama.cpp server (patches/ + llama-hook/) -----------------
 export LLAMA_SERVER="$ROOT/deps/llama.cpp/build/bin/llama-server"
 export MODEL="$ROOT/models/granite-3.3-2b-Q4_K_M.gguf"
+# Face is :8080 (run.py talk). /sheet POSTs to :8081 — a second process,
+# same binary, 2B GGUF, CTX=8192 so the whole TAGS-gforth.md fits.
+export GT_LLAMA="http://127.0.0.1:8080"
+export GT_WALK="http://127.0.0.1:8081"
 
 # GPU offload. CPU-only build: export NGL=0
 export NGL="${NGL:-99}"

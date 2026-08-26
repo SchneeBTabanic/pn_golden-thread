@@ -59,8 +59,15 @@ cp env.example.sh env.sh    # edit MODEL, and NGL=0 if CPU-only
 source env.sh
 python3 run_tests.py        # no model, no server — fails by name if a seam is missing
 ./scripts/run_llama_server.sh
+# second terminal — /sheet POSTs here, never the face. Same clone dir:
+PORT=8081 CTX=8192 MODEL="$(pwd)/models/granite-3.3-2b-Q4_K_M.gguf" \
+  ./scripts/run_llama_server.sh
 python3 run.py
 ```
+
+CPU-only: `NGL=0` on both. The 2B at `:8081` needs `-c 8192` so the **whole**
+`TAGS-gforth.md` fits. A live-core is not the sheet; this summons will not
+amputate it.
 
 `run_llama_server.sh` **requires** `LLAMA_SERVER` and `MODEL`. It passes
 `-fa off`. If flash attention stays on, talk still works; every RELIED
@@ -93,9 +100,10 @@ works without RELIED — it does not silently use another machine's paths.
    still works; every RELIED reading is a named refusal.
 5. **The gForth scribe is a second clone**, not vendored. Talk piles
    need `GT_GF_SCRIBE` and `GT_TAG_SHEET` pointing at
-   `scribe-workbench-gforth` (`TAGS-gforth.md` is working input). The
-   Python scribe is only for HTML `url:` reduction; talk does not need
+   `scribe-workbench-gforth`. `TAGS-gforth.md` **is** the `/sheet` list —
+   working input, not docs. `/sheet` in `run.py` hands that whole file to
+   the 2B at `:8081`. Cloning the scribe without starting that second
+   server means `/sheet` refuses by name (`No beneath server at …:8081`).
+   Same patched `llama-server` binary, second process, 2B GGUF, `-c 8192`.
+   The Python scribe is only for HTML `url:` reduction; talk does not need
    it.
-
-A second CPU `llama-server` on `:8081` is this lab's sheet path, not
-part of the clone. One patched binary from the block above is enough.
