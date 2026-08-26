@@ -204,6 +204,15 @@ def run():
         fails.append("run.py HELP missing url:")
     if "search:" not in runmod.HELP:
         fails.append("run.py HELP missing search:")
+    src_run = open(os.path.join(HERE, "run.py"), encoding="utf-8").read()
+    if "def _window_refuse(" not in src_run:
+        fails.append("run.py must refuse a prompt that will not fit n_ctx")
+    if "n_ctx" not in src_run.split("def _window_refuse(", 1)[1][:800]:
+        fails.append("_window_refuse must look at the face n_ctx")
+    src_model = open(os.path.join(HERE, "model.py"), encoding="utf-8").read()
+    http = src_model.split("def _http_json(", 1)[1].split("def _ollama_up(", 1)[0]
+    if "HTTPError" not in http:
+        fails.append("_http_json must name the HTTP body on 400, not only Bad Request")
     if "Nothing is searched or chosen for you" not in src:
         fails.append("file: sentence that nothing is chosen was lost")
 

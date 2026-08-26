@@ -16,6 +16,10 @@ def run():
     r = file_read.read_placed("/no/such/file/gt-test-missing-xyz")
     if r.ok or "does not exist" not in r.refused:
         fails.append(f"missing file: {r}")
+    r = file_read.read_placed("~Desktop/x.html")
+    if r.ok or "~/" not in r.refused:
+        fails.append("tilde without slash must be named, not expanduser: "
+                     + repr(r.refused))
     with tempfile.TemporaryDirectory() as d:
         r = file_read.read_placed(d)
         if r.ok or "directory" not in r.refused:

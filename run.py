@@ -704,6 +704,35 @@ def _masses_in_order(resp, names):
 PROBE_DIVIDER = "── probe: the weights' rendering under the placed premise (a measurement, not a second opinion) ──"
 
 
+def _window_refuse(prompt):
+    """Named refuse if the face window cannot hold this prompt. Do not POST."""
+    info = model.loaded_model()
+    ctx = None
+    if isinstance(info, dict):
+        ctx = info.get("n_ctx")
+    try:
+        ctx_n = int(ctx or 0)
+    except (TypeError, ValueError):
+        ctx_n = 0
+    if ctx_n <= 0:
+        return ""
+    try:
+        n_prompt = len(model.tokenize(prompt or "", add_special=False))
+    except model.ServerDown as e:
+        return "could not tokenize the placed prompt (" + str(e) + ")"
+    need = n_prompt + int(model.EXECUTOR_MAX_TOKENS)
+    if need <= ctx_n:
+        return ""
+    return (
+        "PLACED TEXT WILL NOT FIT the face window: prompt "
+        + str(n_prompt) + " tokens + n_predict "
+        + str(int(model.EXECUTOR_MAX_TOKENS)) + " vs n_ctx "
+        + str(ctx_n) + ". GT_FILE_MAX_BYTES is a file cap, not a context cap. "
+        "Place a smaller extract, raise CTX on :8080, or url: a smaller page. "
+        "Nothing was asked of the model."
+    )
+
+
 def _file_block(got):
     extra = ""
     red = getattr(got, "reduction", "") or ""
@@ -1656,6 +1685,10 @@ class Talk:
                 file_block = web.hits_block(got)
                 question = question_s or got.target
                 placed_path = got.target
+                print()
+                print(got.content)
+                print()
+                print("(hit list placed — type url: a page you name)")
         if placed_path is None:
             html_path, question_h = web.parse_html_prefix(msg)
             if html_path is not None:
@@ -1763,6 +1796,13 @@ class Talk:
             gram = self.grammar
         full_prompt = model.executor_prompt(
             system, user_prompt, history_pairs=hist, grammar=gram)
+        if file_block:
+            print(file_block.split("\n", 1)[0])
+        wont = _window_refuse(full_prompt)
+        if wont:
+            print(wont)
+            self.turn_n -= 1
+            return "loop"
         if self.dial_alpha and self.press_strength:
             print(DIAL_BOTH_REFUSE)
             self.turn_n -= 1

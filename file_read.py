@@ -39,6 +39,10 @@ def read_placed(path: str) -> FileRead:
     raw = (path or "").strip()
     if not raw:
         return FileRead(ok=False, path="", refused="no path given")
+    if raw.startswith("~") and not raw.startswith("~/") and raw != "~":
+        return FileRead(
+            ok=False, path=raw,
+            refused="home is ~/path — ~Desktop is a literal name, not Desktop")
     target = os.path.abspath(os.path.expanduser(raw))
     if not os.path.exists(target):
         return FileRead(ok=False, path=target, refused="does not exist")

@@ -43,6 +43,16 @@ def _http_json(url, payload=None, timeout=180):
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")[:800]
+        except Exception:
+            body = ""
+        extra = (" — " + body.strip()) if body.strip() else ""
+        raise ServerDown(
+            f"{url} did not answer (HTTP {e.code}: {e.reason}{extra})"
+        ) from e
     except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as e:
         raise ServerDown(f"{url} did not answer ({e})") from e
 
