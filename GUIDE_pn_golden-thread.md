@@ -180,8 +180,21 @@ From the clone, after `source env.sh`:
 PORT=8081 CTX=8192 MODEL="$MODEL" ./scripts/run_llama_server.sh
 
 # terminal 3 — talk
-python3 run.py
+# Dango /walk needs the project venv (torch + HF), not system python
+# unless that python already has GT_DANGO_SITE on its path.
+deps/venv/bin/python run.py
+# bare python3 run.py is fine for face talk + /sheet + /keep
+# if you do not need /walk
 ```
+
+Dango does not share :8081. That port is only the 2B llama-server
+(sheet, bind, LOOK). Dango is a separate Torch / Hugging Face load
+from GT_DANGO. An empty /walk (no Japanese, no proposed @act / @path)
+is first a seam — wrong interpreter, GT_DANGO unset, or GT_DANGO_SITE
+not visible — not a model that declined to speak. If Dango is truly
+unset, /walk must refuse by name. Dango can still contend for RAM
+with the two llama-servers if weights stay resident; keep it cold
+while :8081 binds if the box is tight.
 
 CPU-only: `NGL=0` on both servers. Flash attention must stay off
 (`-fa off` is already in the launch script). If FA is on, talk still
@@ -356,10 +369,12 @@ exist. They are not part of sheet/bind.
 /shape key:value
 ```
 
-`/walk` — last turn into Japanese + Leipzig gloss (Dango). Reveal.
-Proposed tags on that path are shown and not filed. Slow the first
-time. Talk does not wait. Cold Dango while `:8081` binds. If Dango is
-unset, `/walk` refuses by name rather than inventing a Japanese line.
+`/walk` — last turn into Japanese + Leipzig gloss (Dango, Torch/HF —
+not llama.cpp). Reveal. Shown, not filed. Slow the first time
+(weights load). Talk does not wait. If Dango is unset, /walk refuses
+by name. If /walk returns empty speech and no @act / @path, do not
+treat that as a reading — check venv / GT_DANGO / GT_DANGO_SITE
+before you decide the turn has no verb.
 
 `/sheet` — last turn + whole tag sheet to `:8081`. Proposes, **then
 binds**. Print order: proposal, then bind speech. Shown, not filed.
@@ -452,7 +467,7 @@ The diary is kept.
 | Granite on `:8080` (2B enough to talk; 8B if you have VRAM) | face | outer out-breath | First answer. Inquire, bearings, comment, shape. |
 | RELIED hook on that server | inner in-breath | listens during speech | Mass on placed spans. Not truth. |
 | Granite on `:8081` with `-c 8192` | beneath | inner out-breath | `/sheet` propose, then bind. LOOK after `!path`. Must fit the whole `TAGS-gforth.md`. |
-| Dango (optional, `GT_DANGO`) | walk | side reveal | Japanese + gloss. Not bind. Cold during bind. |
+| Dango (optional, `GT_DANGO`) | walk | side reveal | Torch/HF in the talk interpreter — not :8081. Needs project venv. |
 | Optional L2 in `path_stack` | walk | side reveal | Propose `@act`/`@path` from Japanese + gloss + live core. Shown, not filed. |
 | gForth 0.7.3 + scribe leaves | pile | outer in-breath | keep, read, index, toc. Identity = offset + formed + genesis. |
 | Python clerk | stderr / diary | names | Form, splits, refusals, copies judged tags, files bind speech or names absence. |
@@ -838,6 +853,9 @@ understood. Do not build a cathedral where a doorway is needed.
 - Treating `/sheet` proposals as already true even after bind — both
   are speech until you judge.
 - Treating `/walk` as the binding pass.
+- Treating an empty /walk (no Japanese, no act/path) as Dango’s
+  judgment. That emptiness was a venv / GT_DANGO_SITE seam. Refuse
+  by name, or repair the interpreter, then walk again.
 - LOOK expected on the face — after B+C it is on `:8081`; if LOOK
   refuses the window, start the 2B with `-c 8192`, do not amputate
   the sheet.
