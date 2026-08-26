@@ -257,8 +257,17 @@ def run():
     if path_stack.first_sentence("挨拶する\n人: Hello") != "挨拶する":
         fails.append("first_sentence should stop at newline")
 
+    if path_stack.dango_weights_present() and not path_stack.dango_torch_importable():
+        if path_stack.dango_ready():
+            fails.append("dango_ready must be false when torch is missing "
+                         "(weights on disk are not a load)")
+        why = path_stack.dango_refuse_reason()
+        if "torch" not in why:
+            fails.append("refuse reason must name torch: " + why)
     if not path_stack.dango_ready():
-        print("NOTE — Dango weights not on disk; live stack not tested")
+        print("NOTE — Dango not loadable ("
+              + (path_stack.dango_refuse_reason() or "ready false")
+              + "); live stack not tested")
     if not path_stack.gloss_ready():
         fails.append("gloss.py / venv missing — midwife stack is not installed")
     else:

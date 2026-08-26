@@ -186,3 +186,9 @@ works without RELIED — it does not silently use another machine's paths.
    Same patched `llama-server` binary, second process, 2B GGUF, `-c 8192`.
    The Python scribe is only for HTML `url:` reduction; talk does not need
    it.
+6. **`/walk` is not the talk venv.** Dango is a different species: Hugging
+   Face weights loaded by Python+torch, never llama.cpp. `dango_ready` used
+   to be true when only the weight file existed, then `/walk` died on
+   `No module named 'torch'`. It now refuses by name until `GT_DANGO_SITE`
+   has torch+transformers. `requirements.txt` does not install them. Talk
+   and `/sheet` still work.

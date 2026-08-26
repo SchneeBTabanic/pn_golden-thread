@@ -916,11 +916,12 @@ class Talk:
         print("!path files leftover speech and summons a look. Python does not score it.")
         print(f"diary: {turn_record.turns_path()}")
         print(window_status())
-        if path_stack.dango_ready() and path_stack.gloss_ready():
+        why = path_stack.dango_refuse_reason()
+        if why:
+            print("/walk is not ready: " + why + ". Talk still works.")
+        else:
             print("/walk summons Japanese + gloss on the last turn "
                   "(slow first time). It does not file a tag.")
-        else:
-            print("/walk is not ready (Dango or gloss missing). Talk still works.")
         print("/comment asks what the last record is for. Body only. No tag.")
         print("/sheet proposes on the last turn then binds on the 2B at :8081 (not the face).")
         print("/bind re-runs that bind. /keep files the proposal you judged, and names bind if it was silent.")
@@ -1211,8 +1212,9 @@ class Talk:
             if last is None:
                 print("/walk needs a completed turn.")
                 return "loop"
-            if not path_stack.dango_ready() or not path_stack.gloss_ready():
-                print("PATH: Dango or gloss missing. Talk is still recorded.")
+            why = path_stack.dango_refuse_reason()
+            if why:
+                print("PATH: " + why + ". Talk is still recorded.")
                 return "loop"
             asked = turn_record.field(last["body"], "ASKED")
             answered = turn_record.field(last["body"], "ANSWERED")

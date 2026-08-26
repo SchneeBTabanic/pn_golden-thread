@@ -175,9 +175,46 @@ L1_EXEMPLARS = (
 _dango = {"tok": None, "model": None, "error": ""}
 
 
-def dango_ready():
+def dango_weights_present():
     return os.path.isdir(DANGO_DIR) and os.path.isfile(
         os.path.join(DANGO_DIR, "model.safetensors"))
+
+
+def _borrow_dango_site():
+    if DANGO_SITE and os.path.isdir(DANGO_SITE) and DANGO_SITE not in sys.path:
+        sys.path.insert(0, DANGO_SITE)
+
+
+def dango_torch_importable():
+    """Weights on disk are not enough. Talk venv has no torch."""
+    _borrow_dango_site()
+    try:
+        import torch  # noqa: F401
+        from transformers import AutoModelForCausalLM  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def dango_ready():
+    return dango_weights_present() and dango_torch_importable()
+
+
+def dango_refuse_reason():
+    """English for /walk. Files-on-disk is not a load."""
+    if not dango_weights_present():
+        return "Dango weights missing at " + DANGO_DIR
+    if not dango_torch_importable():
+        where = DANGO_SITE or "(GT_DANGO_SITE unset)"
+        return (
+            "Dango needs torch+transformers at GT_DANGO_SITE="
+            + where
+            + " — requirements.txt (talk) does not install them. "
+            "Talk still works; /walk will not"
+        )
+    if not gloss_ready():
+        return "gloss.py or its venv python is missing"
+    return ""
 
 
 def gloss_ready():
@@ -189,16 +226,13 @@ def _load_dango():
         return True
     if _dango["error"]:
         return False
-    if not dango_ready():
-        _dango["error"] = "Dango weights missing at " + DANGO_DIR
+    why = dango_refuse_reason()
+    if why:
+        _dango["error"] = why
         return False
     try:
-        try:
-            import torch
-        except ImportError:
-            if DANGO_SITE and DANGO_SITE not in sys.path:
-                sys.path.insert(0, DANGO_SITE)
-            import torch
+        _borrow_dango_site()
+        import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
         tok = AutoTokenizer.from_pretrained(DANGO_DIR, trust_remote_code=True)
         mdl = AutoModelForCausalLM.from_pretrained(

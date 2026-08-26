@@ -24,7 +24,6 @@ export GT_LAW="$ROOT/law/GoldenThread-v1.6.2-Triune-Cathedral.json"
 # --- python packages (python3 -m venv deps/venv && pip install -r requirements.txt)
 if [[ -x "$ROOT/deps/venv/bin/python" ]]; then
   export GT_WEB_SITE="$("$ROOT/deps/venv/bin/python" -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
-  export GT_DANGO_SITE="$GT_WEB_SITE"
 else
   echo "env.sh: deps/venv is missing. python3 -m venv deps/venv && deps/venv/bin/pip install -r requirements.txt" >&2
 fi
@@ -42,8 +41,11 @@ export GT_WALK="http://127.0.0.1:8081"
 # GPU offload. CPU-only build: export NGL=0
 export NGL="${NGL:-99}"
 
-# --- optional: the Dango path stack ----------------------------------------
-# Only needed for !path / Japanese tagging. Everything else runs without it.
+# --- optional: /walk Japanese (Dango). Talk does NOT need this. ------------
+# Dango is torch+transformers in-process, not llama.cpp. The talk venv from
+# requirements.txt has no torch. Point GT_DANGO_SITE at a site-packages that
+# actually contains torch, or /walk names the refusal and talk still works.
+# export GT_DANGO_SITE="$GT_WEB_SITE"   # only if you pip install torch there
 export GT_DANGO="$ROOT/models/dango-1.8b"
 export GT_GLOSS_PY="$ROOT/deps/tagging-lab/gloss.py"
 export GT_GLOSS_PYTHON="$ROOT/deps/tagging-lab/.venv/bin/python"
