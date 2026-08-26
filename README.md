@@ -18,11 +18,11 @@ llama.cpp, a Granite GGUF, and a Python venv. Latest llama.cpp will not
 do. The Python scribe is not required for talk.
 
 ```sh
-# 1. trees
-git clone git@github.com:SchneeBTabanic/pn_golden-thread.git
+# 1. trees  (https — no GitHub account, no SSH key)
+git clone https://github.com/SchneeBTabanic/pn_golden-thread.git
 cd pn_golden-thread
 mkdir -p deps models
-git clone git@github.com:SchneeBTabanic/scribe-workbench-gforth.git deps/scribe-workbench-gforth
+git clone https://github.com/SchneeBTabanic/scribe-workbench-gforth.git deps/scribe-workbench-gforth
 
 # 2. system
 sudo apt install gforth pandoc poppler-utils build-essential cmake python3-venv python3-pip
@@ -54,16 +54,26 @@ is a named refusal.
 
 ## Then, on the machine that will run it (can be offline)
 
+`env.sh` is a list of paths on **this** disk. You do not invent names.
+Copy the example, then change only what is true of your files:
+
 ```sh
-cp env.example.sh env.sh    # edit MODEL, and NGL=0 if CPU-only
-source env.sh
+cp env.example.sh env.sh
+# Open env.sh in an editor. Usually two lines:
+#   MODEL=   the GGUF you put in models/ (if the filename differs, change this)
+#   NGL=0    if you built llama-server without a GPU (add this line)
+./scripts/wire.sh           # names what is still MISSING; does not download
+source env.sh               # load those paths into this terminal
 python3 run_tests.py        # no model, no server — fails by name if a seam is missing
 ./scripts/run_llama_server.sh
 # second terminal — /sheet POSTs here, never the face. Same clone dir:
-PORT=8081 CTX=8192 MODEL="$(pwd)/models/granite-3.3-2b-Q4_K_M.gguf" \
-  ./scripts/run_llama_server.sh
+source env.sh
+PORT=8081 CTX=8192 MODEL="$MODEL" ./scripts/run_llama_server.sh
 python3 run.py
 ```
+
+Every new terminal needs `source env.sh` again. `wire.sh` will not overwrite
+an `env.sh` you already edited.
 
 CPU-only: `NGL=0` on both. The 2B at `:8081` needs `-c 8192` so the **whole**
 `TAGS-gforth.md` fits. A live-core is not the sheet; this summons will not

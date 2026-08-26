@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# After you have cloned the trees, built llama-server, and put a GGUF in
+# models/: this script copies env.example.sh to env.sh if needed and names
+# what is still missing. It does not download, compile, or guess a lab path.
+#
+#   ./scripts/wire.sh
+#   source env.sh
+#
+# CPU-only build: NGL=0 ./scripts/wire.sh
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$HERE"
+
+if [[ ! -f env.example.sh ]]; then
+  echo "env.example.sh is missing from $HERE" >&2
+  exit 2
+fi
+
+if [[ ! -f env.sh ]]; then
+  cp env.example.sh env.sh
+  echo "wrote env.sh from env.example.sh"
+else
+  echo "env.sh already exists — not overwritten"
+fi
+
+# shellcheck disable=SC1091
+source "$HERE/env.sh"
+
+missing=0
+need() {
+  local label="$1" path="$2"
+  if [[ -e "$path" ]]; then
+    echo "OK     $label"
+    echo "       $path"
+  else
+    echo "MISSING  $label"
+    echo "         expected: $path"
+    missing=1
+  fi
+}
+
+echo
+echo "checking seams from env.sh (ROOT=$ROOT)"
+need "gForth scribe directory" "${GT_GF_SCRIBE:-}"
+need "tag sheet TAGS-gforth.md" "${GT_TAG_SHEET:-}"
+need "clause file" "${GT_LAW:-}"
+need "patched llama-server" "${LLAMA_SERVER:-}"
+need "face GGUF (MODEL)" "${MODEL:-}"
+
+if [[ -n "${MODEL:-}" && ! -f "${MODEL:-}" ]]; then
+  echo
+  echo "GGUF files already in models/ (set MODEL= in env.sh to one of these):"
+  shopt -s nullglob
+  ggufs=(models/*.gguf)
+  if [[ ${#ggufs[@]} -eq 0 ]]; then
+    echo "  (none — download a Granite 3.3 GGUF into models/)"
+  else
+    for g in "${ggufs[@]}"; do
+      echo "  $HERE/$g"
+    done
+  fi
+fi
+
+if ! command -v gforth >/dev/null 2>&1; then
+  echo "MISSING  gforth on PATH  (sudo apt install gforth)"
+  missing=1
+else
+  echo "OK     gforth  $(command -v gforth)"
+fi
+
+if [[ ! -d "${GT_WEB_SITE:-}" ]]; then
+  echo "MISSING  Python venv site-packages"
+  echo "         python3 -m venv deps/venv && deps/venv/bin/pip install -r requirements.txt"
+  missing=1
+else
+  echo "OK     GT_WEB_SITE"
+  echo "       $GT_WEB_SITE"
+fi
+
+echo
+if [[ "$missing" -ne 0 ]]; then
+  echo "Not ready. Fetch what is MISSING, edit MODEL= in env.sh if the GGUF"
+  echo "filename differs, then:  source env.sh"
+  echo "CPU-only: add  export NGL=0  to env.sh"
+  exit 1
+fi
+
+echo "Ready. In every new terminal:"
+echo "  source $HERE/env.sh"
+echo "Face:"
+echo "  ./scripts/run_llama_server.sh"
+echo "Beneath (/sheet) — second terminal:"
+echo "  PORT=8081 CTX=8192 MODEL=\"\$MODEL\" ./scripts/run_llama_server.sh"
+echo "Talk:"
+echo "  python3 run.py"
+exit 0

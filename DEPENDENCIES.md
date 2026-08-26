@@ -23,7 +23,7 @@ Talk piles are gForth format. Clone this repo; do not vendor it.
 
 ```sh
 mkdir -p deps && cd deps
-git clone git@github.com:SchneeBTabanic/scribe-workbench-gforth.git
+git clone https://github.com/SchneeBTabanic/scribe-workbench-gforth.git
 ```
 
 `pile_io.py` shells to the gForth leaves `pn-keep.fs`, `pn-gread.fs`,
