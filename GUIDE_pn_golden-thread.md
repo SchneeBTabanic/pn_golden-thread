@@ -189,12 +189,22 @@ deps/venv/bin/python run.py
 
 Dango does not share :8081. That port is only the 2B llama-server
 (sheet, bind, LOOK). Dango is a separate Torch / Hugging Face load
-from GT_DANGO. An empty /walk (no Japanese, no proposed @act / @path)
-is first a seam — wrong interpreter, GT_DANGO unset, or GT_DANGO_SITE
-not visible — not a model that declined to speak. If Dango is truly
-unset, /walk must refuse by name. Dango can still contend for RAM
-with the two llama-servers if weights stay resident; keep it cold
-while :8081 binds if the box is tight.
+from GT_DANGO.
+
+Two silences. They must not look the same.
+If `/walk` **refuses by name** (weights missing, no torch at
+GT_DANGO_SITE, gloss.py / Sudachi missing) that is a seam. Repair
+the interpreter, then walk again.
+If `/walk` **loads** and then prints `Dango produced no Japanese`
+with a `dango-raw:` line, Dango spoke and the hop stopped at L1
+(English ASKED/ANSWERED in, no Japanese sentence out). That is
+not venv. It is not a different Dango variant. Option A (Granite
+translates, then Dango writes inside Japanese) is specified and
+not built.
+
+Dango can still contend for RAM with the two llama-servers if
+weights stay resident; keep it cold while :8081 binds if the box
+is tight.
 
 CPU-only: `NGL=0` on both servers. Flash attention must stay off
 (`-fa off` is already in the launch script). If FA is on, talk still
@@ -372,16 +382,14 @@ exist. They are not part of sheet/bind.
 `/walk` — last turn into Japanese then Leipzig (Dango, Torch/HF —
 not llama.cpp). Reveal. Shown, not filed. Slow the first time
 (weights load). Ordinary talk does not call it. If Dango or the
-glosser is unset, /walk refuses by name. Leipzig is the middle of
-this hop, not a display extra: the stems are the shape of `@act` /
-`@path`. If /walk returns empty speech and no @act / @path, do not
-treat that as a reading — check venv / GT_DANGO / GT_DANGO_SITE /
-Sudachi before you decide the turn has no verb. The gloss script is
-`tagging-lab/gloss.py` in this clone. It is not a private midwife
-repo. Do not write a placeholder glosser. Do not replace Dango with
-an instruction-tuned Japanese model: it is a base checkpoint; Option
-A (Granite hop into Japanese, then Dango writes inside Japanese) is
-specified and not this clone’s substitute model.
+glosser is unset, /walk refuses by name (seam). Leipzig is the
+middle of this hop, not a display extra: the stems are the shape of
+`@act` / `@path`. If Dango loaded and the error is no Japanese, read
+`dango-raw:` — empty or English is F-L1, not a venv miss. Do not
+treat that as a reading of the turn, and do not swap the
+checkpoint. Option A is specified and not built. The gloss script
+is `tagging-lab/gloss.py` in this clone. Do not write a placeholder
+glosser.
 
 `/sheet` — last turn + whole tag sheet to `:8081`. Proposes, **then
 binds**. Print order: proposal, then bind speech. Shown, not filed.
@@ -860,11 +868,11 @@ understood. Do not build a cathedral where a doorway is needed.
 - Treating `/sheet` proposals as already true even after bind — both
   are speech until you judge.
 - Treating `/walk` as the binding pass.
-- Treating an empty /walk (no Japanese, no act/path) as Dango’s
-  judgment. That emptiness was a venv / GT_DANGO_SITE seam, or L1
-  hopping English into Japanese (a base checkpoint, not a missing
-  chat template). Refuse by name, or repair the interpreter, then
-  walk again. Do not install rinna to make the prompt look obeyed.
+- Treating an empty /walk as one thing. A named refusal (no torch,
+  no weights, no Sudachi) is a seam. A load that then prints no
+  Japanese plus `dango-raw:` is F-L1. Those must not look the same.
+  Do not install rinna. Do not treat either as Dango’s judgment of
+  the turn.
 - Writing a stub `gloss.py` so /walk “completes.” The real glosser
   ships in `tagging-lab/`. A missing Sudachi: `/walk` refuses. A
   passthrough pretends a missing gloss is a translated one. Leipzig

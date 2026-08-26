@@ -89,6 +89,22 @@ def run():
         fails.append("/walk must refuse on the whole hop (Dango then Leipzig)")
     if "dango_refuse_reason()" in walk_chunk and "walk_refuse_reason()" not in walk_chunk:
         fails.append("/walk still gates on Dango alone")
+    empty_rep = {
+        "source": "proposed", "error": "Dango produced no Japanese (empty completion)",
+        "dango_raw": "", "path": "not-yet-discerned",
+    }
+    empty_txt = path_stack.stack_as_walk_text(empty_rep)
+    if "dango-raw: (empty)" not in empty_txt:
+        fails.append("empty Dango completion must show dango-raw: " + repr(empty_txt))
+    eng_rep = {
+        "source": "proposed",
+        "error": "Dango produced no Japanese (completion was not Japanese)",
+        "dango_raw": "- 2 + 2 is a <= 4.", "path": "not-yet-discerned",
+    }
+    eng_txt = path_stack.stack_as_walk_text(eng_rep)
+    if "2 + 2 is a" not in eng_txt or "completion was not Japanese" not in eng_txt:
+        fails.append("English F-L1 junk must be named, not a bare no-Japanese: "
+                     + repr(eng_txt))
 
     src = open(os.path.join(HERE, "model.py"), encoding="utf-8").read()
     for fn in ("def shape(", "def comment(", "def look("):

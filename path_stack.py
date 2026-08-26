@@ -806,12 +806,23 @@ def run_stack(asked, answered, written_act="", written_path=""):
     try:
         raw_ja, cut_note = dango_japanese(asked, answered)
         report["input_cut"] = cut_note
+        report["dango_raw"] = raw_ja
         # Drop a Latin heading first. Cutting the first line before that
         # keeps a conjugation-page title and names no Japanese.
         ja = first_sentence(japanese_span(raw_ja) or raw_ja)
         report["japanese"] = ja
         if not ja or not looks_japanese(ja):
-            report["error"] = "Dango produced no Japanese"
+            raw = (raw_ja or "").strip()
+            if not raw:
+                report["error"] = "Dango produced no Japanese (empty completion)"
+            elif looks_japanese(raw):
+                report["error"] = (
+                    "Dango produced Japanese that the clerk cut to nothing"
+                )
+            else:
+                report["error"] = (
+                    "Dango produced no Japanese (completion was not Japanese)"
+                )
             return report
         gloss_why = gloss_refuse_reason()
         if gloss_why:
@@ -877,6 +888,11 @@ def stack_as_walk_text(report):
         lines.append("source: proposed by the stack — not filed on the turn")
     if report.get("error"):
         lines.append("error: " + report["error"])
+    if report.get("dango_raw") is not None and report.get("error"):
+        raw = " ".join((report.get("dango_raw") or "").split())
+        if len(raw) > 240:
+            raw = raw[:240] + "…"
+        lines.append("dango-raw: " + (raw or "(empty)"))
     if report.get("input_cut"):
         lines.append(report["input_cut"])
     if report.get("exemplar_copy"):

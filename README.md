@@ -258,14 +258,17 @@ export GT_DANGO_SITE="$GT_WEB_SITE"
 start, `/walk` prints why (missing weights, or still no torch). Talk
 and `/sheet` work without this.
 
-If `/walk` **does** load and then shows `error: Dango produced no Japanese`,
-that is Dango’s **sentence** coming back empty or Latin-only — not “it found
-no reliable `@act`/`@path`”. Act and path are proposed later (Granite +
-gloss), and only after there is Japanese. Empty Japanese means the hop
-stopped at L1. Dango 1.8B is a Japanese **base** checkpoint. It is not
-instruction-tuned. Do not replace it with rinna / stablelm-ja / a chat
-variant. A Latin heading followed by real Japanese is still Japanese;
-`/walk` now keeps from the first kana/kanji.
+If `/walk` **refuses by name** (weights, torch, gloss), that is the
+venv / path seam. Repair it, walk again.
+
+If `/walk` **loads** and then shows `Dango produced no Japanese`, that
+is a different silence. Read `dango-raw:`. Empty or English is F-L1:
+Dango does not hop English ASKED/ANSWERED into Japanese. It is not
+“no reliable `@act`/`@path`”, not a missing chat template, and not a
+different Dango checkpoint. Option A (Granite translates, Dango writes
+inside Japanese) is specified and not built. A Latin heading followed
+by real Japanese is still Japanese; `/walk` keeps from the first
+kana/kanji.
 
 The Leipzig glosser is `tagging-lab/gloss.py` in this repo, with
 `jmdict-lemmas.tsv`. It is not in a private ontology-midwife tree. It
