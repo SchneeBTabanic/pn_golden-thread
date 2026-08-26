@@ -248,6 +248,12 @@ def record_curve(turn_ref, series, profiles=None, note=""):
 
     No series, no sibling. A refused split still files its SERIES.
     Nothing is derived here; relied.py already computed for the clock.
+
+    Not a way. @act/@path are meaning seats; keep's echo compares those.
+    A SERIES is a measurement sibling (part:curve), same as a curve is not
+    a turn. Costume seats made every first answer announce
+    YOU HAVE REACHED THIS WAY BEFORE against hold-the-session-refusals.
+    Echo already stays quiet when there is no @path: — that door is enough.
     """
     import relied
 
@@ -269,8 +275,6 @@ def record_curve(turn_ref, series, profiles=None, note=""):
         ("captured", "golden-thread"),
         ("part", "curve"),
     ]
-    tags.append(("act", "hold-the-curve-that-annotates-a-turn"))
-    tags.append(("path", "toward-a-reading-that-can-be-resplit"))
     if turn_ref:
         tags.append(("ref", str(turn_ref)))
     for seat, name, seat_bin in relied.curve_bins(profiles):

@@ -82,6 +82,8 @@ def run():
                 fails.append("curve block does not @ref: the turn it annotates")
             if not any(k == "binned" for k, _ in tags):
                 fails.append("header carries no binned disclosure")
+            if any(k == "act" for k, _ in tags) or any(k == "path" for k, _ in tags):
+                fails.append("a curve is not a way; it must not carry @act:/@path:")
             for key, val in tags:
                 if " " in key or " " in val:
                     fails.append("tag with a space would break the header: " + val)
@@ -119,6 +121,22 @@ def run():
         fails.append("the hum mark must bin as hum")
     if relied.curve_bins(None) != []:
         fails.append("no profiles must yield no bins")
+
+    # ---- 4a. A CURVE IS NOT A WAY. keep echo compares @path:/@act:.
+    # Costume seats on the sibling made Hello (and any first unique
+    # question) announce YOU HAVE REACHED THIS WAY BEFORE against the
+    # session charter's hold-the-session-refusals. Not memory of talk.
+    import io
+    import contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stderr(buf):
+        turn_record.ensure_session()
+        ser_echo = _series([2, 2], {"asked": [100, 200]})
+        prof_echo, _n = relied.split_series(ser_echo, 2, 4)
+        turn_record.record_curve("turn-echo", ser_echo, prof_echo)
+    notes = buf.getvalue()
+    if "YOU HAVE REACHED THIS WAY BEFORE" in notes:
+        fails.append("curve keep echoed against clerk: " + notes[:400])
 
     # ---- 4b. A CURVE IS NOT A TURN. Found by his E2 sitting, 2026-08-24. ---
     # /history rendered every curve as a turn with an empty ASKED and ANSWERED,
