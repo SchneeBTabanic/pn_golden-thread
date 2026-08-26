@@ -177,8 +177,11 @@ From the clone, after `source env.sh`:
 ./scripts/run_llama_server.sh
 
 # terminal 2 — beneath (sheet, bind, LOOK, hop). 2B on CPU.
-# NGL=0 is system RAM, not “no memory.” Last-N is GT_SCORE_HISTORY
-# (unset = raw). Do not put the 2B on VRAM next to an 8B face.
+# NGL=0 is weights in system RAM, not “no memory.” A CUDA-built
+# llama-server still grabs leftover VRAM for compute buffers unless
+# --device none (the script adds that when NGL=0). Last-N is
+# GT_SCORE_HISTORY (unset = raw). Do not put the 2B on VRAM next
+# to an 8B face.
 NGL=0 PORT=8081 CTX=8192 MODEL="$MODEL_BENEATH" ./scripts/run_llama_server.sh
 
 # terminal 3 — talk (the client, not a third server)

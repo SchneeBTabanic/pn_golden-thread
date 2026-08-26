@@ -144,10 +144,12 @@ Talk:
 ```
 
 If the face is 8B on a GPU, **do not** put the 2B on VRAM as well.
-`NGL=0` on `:8081` is system RAM. That is llama.cpp’s ordinary CPU
-path. `NGL` is not last-N. Last-N is `GT_SCORE_HISTORY` (unset =
-`raw`, a thread). `GT_SCORE_HISTORY=none` is lab isolation; do not
-set it for talk.
+`NGL=0` on `:8081` is weights in system RAM. A CUDA-built
+`llama-server` still parks compute buffers on leftover VRAM unless
+the process is told `--device none` (the launch script adds that
+when `NGL=0`). `NGL` is not last-N. Last-N is `GT_SCORE_HISTORY`
+(unset = `raw`, a thread). `GT_SCORE_HISTORY=none` is lab isolation;
+do not set it for talk.
 
 A box with no GPU: `NGL=0` on **both** servers. The 2B at `:8081`
 still needs `-c 8192` so the **whole** `TAGS-gforth.md` fits. A

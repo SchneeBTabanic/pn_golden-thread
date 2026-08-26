@@ -16,7 +16,9 @@
 #   MODEL         .gguf path — REQUIRED unless -m is passed
 #   PORT          default 8080   (run.py looks here)
 #   CTX           default 8192   (drop to 4096 for the 8B on 6 GB)
-#   NGL           default 99     (GPU). CPU-only build: NGL=0
+#   NGL           default 99     (GPU layers). 0 = weights on CPU.
+#                 A CUDA-built binary still parks compute buffers on the
+#                 GPU unless --device none. This script adds that when NGL=0.
 set -euo pipefail
 
 if [[ -z "${LLAMA_SERVER:-}" ]]; then
@@ -69,12 +71,27 @@ if [[ ! -f "$MODEL" ]]; then
   exit 1
 fi
 
+# NGL=0 is weights on CPU. A CUDA-linked llama-server still inits CUDA and
+# tries ~0.5 GB compute buffers on leftover VRAM. --device none hides the
+# GPU from this process (face on :8080 can keep the card).
+DEVICE_NONE=()
+have_dev=0
+for a in "${EXTRA[@]+"${EXTRA[@]}"}"; do
+  case "$a" in
+    -dev|--device|--device=*) have_dev=1 ;;
+  esac
+done
+if [[ "$NGL" == "0" && "$have_dev" -eq 0 ]]; then
+  DEVICE_NONE=(--device none)
+fi
+
 echo "starting $SERVER" >&2
 echo "  model $MODEL" >&2
 echo "  port  $PORT   ctx $CTX   ngl $NGL   fa off" >&2
+if [[ ${#DEVICE_NONE[@]} -gt 0 ]]; then
+  echo "  device none  (NGL=0: do not park compute buffers on leftover VRAM)" >&2
+fi
 
 # -fa off last: auto/on means kq_soft_max never exists and RELIED refuses.
-if [[ ${#EXTRA[@]} -gt 0 ]]; then
-  exec "$SERVER" -m "$MODEL" -c "$CTX" -ngl "$NGL" --port "$PORT" "${EXTRA[@]}" -fa off
-fi
-exec "$SERVER" -m "$MODEL" -c "$CTX" -ngl "$NGL" --port "$PORT" -fa off
+exec "$SERVER" -m "$MODEL" -c "$CTX" -ngl "$NGL" --port "$PORT" \
+  "${DEVICE_NONE[@]}" "${EXTRA[@]+"${EXTRA[@]}"}" -fa off
