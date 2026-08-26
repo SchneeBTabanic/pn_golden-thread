@@ -480,8 +480,28 @@ HOP_SYSTEM = (
 )
 
 
+def _hop_field(line):
+    """Open a hop field. Latin keys or the Japanese pair the 2B actually wrote.
+
+    Same two seats: question line, reply line. No regex. Not a rank.
+    Fullwidth colon is a different character; both are named.
+    """
+    s = (line or "").strip()
+    for key, kind in (
+        ("QUESTION:", "asked"),
+        ("REPLY:", "answered"),
+        ("質問:", "asked"),
+        ("質問：", "asked"),
+        ("応答:", "answered"),
+        ("応答：", "answered"),
+    ):
+        if s.startswith(key):
+            return kind, s[len(key):].strip()
+    return None, s
+
+
 def parse_hop_lines(text):
-    """QUESTION: / REPLY: field bodies. No regex. Missing stays empty.
+    """QUESTION:/REPLY: or 質問:/応答: field bodies. Missing stays empty.
 
     A field runs until the next key. Leading Latin in the body is dropped
     by japanese_span (same clerk cut as L1), not by stripping ── by name.
@@ -489,15 +509,13 @@ def parse_hop_lines(text):
     asked_parts, answered_parts = [], []
     mode = None
     for ln in (text or "").splitlines():
-        s = ln.strip()
-        if s.startswith("QUESTION:"):
+        kind, rest = _hop_field(ln)
+        if kind == "asked":
             mode = "asked"
-            rest = s[len("QUESTION:"):].strip()
             asked_parts = [rest] if rest else []
             continue
-        if s.startswith("REPLY:"):
+        if kind == "answered":
             mode = "answered"
-            rest = s[len("REPLY:"):].strip()
             answered_parts = [rest] if rest else []
             continue
         if mode == "asked":

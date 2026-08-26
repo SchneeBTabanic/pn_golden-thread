@@ -103,6 +103,14 @@ def run():
     if "二たす二" not in ha or "四" not in hb:
         fails.append("parse_hop_lines lost the Japanese fields: "
                      + repr((ha, hb)))
+    ja_ha, ja_hb = path_stack.parse_hop_lines(
+        "質問: 私は手紙を書き終え、封をつけました。\n"
+        "応答: 素晴らしいです！手紙を書き終え、封をつけて完了しました。\n")
+    if "手紙" not in ja_ha or "素晴らしい" not in ja_hb:
+        fails.append("parse_hop_lines missed Japanese QUESTION/REPLY keys: "
+                     + repr((ja_ha, ja_hb)))
+    if not path_stack.looks_japanese(ja_ha) or not path_stack.looks_japanese(ja_hb):
+        fails.append("Japanese-keyed hop must still count as Japanese")
     wrapped = (
         "QUESTION: 私は手紙を書き終え、封をつけました。\n"
         "REPLY: ── response (integrating the live mouth) ──\n"
