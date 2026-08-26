@@ -186,9 +186,29 @@ works without RELIED — it does not silently use another machine's paths.
    Same patched `llama-server` binary, second process, 2B GGUF, `-c 8192`.
    The Python scribe is only for HTML `url:` reduction; talk does not need
    it.
-6. **`/walk` is not the talk venv.** Dango is a different species: Hugging
-   Face weights loaded by Python+torch, never llama.cpp. `dango_ready` used
-   to be true when only the weight file existed, then `/walk` died on
-   `No module named 'torch'`. It now refuses by name until `GT_DANGO_SITE`
-   has torch+transformers. `requirements.txt` does not install them. Talk
-   and `/sheet` still work.
+6. **`/walk` (Dango) is optional and is not llama.cpp.** You do **not**
+   have to run the whole program “inside” a venv. You still type
+   `python3 run.py` after `source env.sh`. Dango only needs **torch** on
+   the package path `GT_DANGO_SITE`. The talk venv from step 3 does not
+   include torch. On Debian/Ubuntu, add it to that same venv:
+
+```sh
+# still in the clone directory, after step 3
+deps/venv/bin/pip install torch transformers
+```
+
+Then in `env.sh` (the file `wire.sh` copies from `env.example.sh`):
+
+```sh
+export GT_DANGO_SITE="$GT_WEB_SITE"
+```
+
+`GT_WEB_SITE` is already set from `deps/venv` when that venv exists.
+`source env.sh` again. `/walk` should then load. If Dango still cannot
+start, `/walk` prints why (missing weights, or still no torch). Talk and
+`/sheet` work without this.
+
+If `/walk` **does** load and then shows `error: Dango produced no Japanese`,
+that is Dango’s **sentence** coming back empty — not “it found no reliable
+`@act`/`@path`”. Act and path are proposed later (Granite + gloss), and
+only after there is Japanese. Empty Japanese means the hop stopped at L1.
