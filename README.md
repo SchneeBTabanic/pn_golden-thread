@@ -186,27 +186,43 @@ works without RELIED — it does not silently use another machine's paths.
    Same patched `llama-server` binary, second process, 2B GGUF, `-c 8192`.
    The Python scribe is only for HTML `url:` reduction; talk does not need
    it.
-6. **`/walk` (Dango) is optional and is not llama.cpp.** You do **not**
-   have to run the whole program “inside” a venv. You still type
-   `python3 run.py` after `source env.sh`. Dango only needs **torch** on
-   the package path `GT_DANGO_SITE`. The talk venv from step 3 does not
-   include torch. On Debian/Ubuntu, add it to that same venv:
+6. **`/walk` (Dango) is optional and is not llama.cpp.**
+
+You do **not** start the program with `source deps/venv/bin/activate`.
+Startup is still:
+
+```sh
+source env.sh
+python3 run.py
+```
+
+That `python3` is your normal system Python. Nothing “runs the venv” as a
+second program.
+
+The venv is a **box of libraries**, not a second engine. `env.sh` points
+`GT_WEB_SITE` (TUI) and `GT_DANGO_SITE` (Dango) at that box’s
+`site-packages` folder. When `/walk` needs Dango, **the same** `run.py`
+process puts that folder on its import path and loads torch **inside
+itself**. No second server, no second Python.
+
+Talk’s `requirements.txt` venv is enough for the TUI. Dango needs extra
+**torch** and **transformers** in that same box. On Debian/Ubuntu:
 
 ```sh
 # still in the clone directory, after step 3
 deps/venv/bin/pip install torch transformers
 ```
 
-Then in `env.sh` (the file `wire.sh` copies from `env.example.sh`):
+Then in `env.sh`:
 
 ```sh
 export GT_DANGO_SITE="$GT_WEB_SITE"
 ```
 
 `GT_WEB_SITE` is already set from `deps/venv` when that venv exists.
-`source env.sh` again. `/walk` should then load. If Dango still cannot
-start, `/walk` prints why (missing weights, or still no torch). Talk and
-`/sheet` work without this.
+`source env.sh` again. Talk without `/walk` does not need torch. If Dango
+still cannot start, `/walk` prints why (missing weights, or still no
+torch). Talk and `/sheet` work without this.
 
 If `/walk` **does** load and then shows `error: Dango produced no Japanese`,
 that is Dango’s **sentence** coming back empty — not “it found no reliable
