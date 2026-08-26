@@ -62,9 +62,10 @@ fi
 
 echo "starting $SERVER" >&2
 echo "  model $MODEL" >&2
-echo "  port  $PORT   ctx $CTX   ngl $NGL" >&2
+echo "  port  $PORT   ctx $CTX   ngl $NGL   fa off" >&2
 
+# -fa off last: auto/on means kq_soft_max never exists and RELIED refuses.
 if [[ ${#EXTRA[@]} -gt 0 ]]; then
-  exec "$SERVER" -m "$MODEL" -c "$CTX" -ngl "$NGL" --port "$PORT" "${EXTRA[@]}"
+  exec "$SERVER" -m "$MODEL" -c "$CTX" -ngl "$NGL" --port "$PORT" "${EXTRA[@]}" -fa off
 fi
-exec "$SERVER" -m "$MODEL" -c "$CTX" -ngl "$NGL" --port "$PORT"
+exec "$SERVER" -m "$MODEL" -c "$CTX" -ngl "$NGL" --port "$PORT" -fa off

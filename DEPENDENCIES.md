@@ -58,14 +58,17 @@ diff, and `llama-hook/` holds the two new translation units as standalone files.
 ```
 upstream   github.com/ggml-org/llama.cpp
 baseline   cea560f483f0f03e828a6c76e78821debdecbe06   (tag b8461)
-patch      patches/llama.cpp-b8461-gt-relied.patch     (4 files in tools/server)
-new files  tools/server/gt-relied.cpp, gt-relied.h     (also in llama-hook/)
+patch      patches/llama.cpp-b8461-gt-relied.patch     (4 existing files in tools/server)
+new files  copy llama-hook/gt-relied.cpp and gt-relied.h into tools/server/
 ```
 
-**Build it with flash attention OFF at runtime.** `-fa off`. The default is
-`auto`, which turns it on, and then the `kq_soft_max` tensors the hook reads do
-not exist: `saw_softmax` stays false and every reading is a named refusal.
-`scripts/run_llama_server.sh` does not pass it.
+The patch does not contain the two new units. `git apply` then `cp` from
+`llama-hook/`, or cmake fails looking for files that are not there.
+
+**Flash attention OFF at runtime.** `-fa off`. The default is `auto`, which
+turns it on, and then the `kq_soft_max` tensors the hook reads do not exist:
+`saw_softmax` stays false and every reading is a named refusal.
+`scripts/run_llama_server.sh` passes `-fa off`.
 
 The hook also emits a **per-token series** (`gt_relied_series`: `scale`,
 `prefix_bytes`, `bytes`, per-span integer masses) alongside the single fraction.
@@ -76,9 +79,11 @@ hook skips, so it has bytes but no reading. Speculative decoding voids the
 series rather than emitting a curve that would be quietly wrong.
 
 ```sh
-cd deps && git clone https://github.com/ggml-org/llama.cpp.git
+mkdir -p deps && cd deps
+git clone https://github.com/ggml-org/llama.cpp.git
 cd llama.cpp && git checkout cea560f4
 git apply ../../patches/llama.cpp-b8461-gt-relied.patch
+cp ../../llama-hook/gt-relied.cpp ../../llama-hook/gt-relied.h tools/server/
 cmake -B build -DGGML_CUDA=ON && cmake --build build -j --target llama-server
 ```
 
