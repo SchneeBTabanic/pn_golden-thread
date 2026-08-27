@@ -770,9 +770,9 @@ def _fit_place_to_window(got, overhead_user, system):
                 budget = min(budget, int(cap))
             except ValueError:
                 pass
-    kept, n_kept, n_all, dropped_from = place_fit.fit_in_order(
+    kept, n_kept, n_all, dropped_from, cut = place_fit.fit_in_order(
         body, budget, _count_place_tokens)
-    drop = place_fit.drop_note(n_kept, n_all, dropped_from)
+    drop = place_fit.drop_note(n_kept, n_all, dropped_from, cut)
     if not kept:
         return None, (
             "PLACED TEXT WILL NOT FIT the face window: the first paragraph "

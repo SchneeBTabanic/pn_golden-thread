@@ -162,10 +162,12 @@ thread). `GT_SCORE_HISTORY=none` is lab isolation; do not set it for
 talk.
 
 `file:` / `url:` / `html:` fill the face window in **document order**.
-`GT_FILE_MAX_BYTES` is a read cap. What enters Granite is a prefix of
-paragraphs that still leaves room for `n_predict` inside `n_ctx`.
-Dropped paragraphs are named (`DROPPED: paragraphs K–N … not a
-relevance pick`). This is not GTPS-Agent’s scored selector.
+`GT_FILE_MAX_BYTES` is a read cap. What enters Granite is a prefix that
+still leaves room for `n_predict` inside `n_ctx`. If the first
+paragraph is itself larger than that remainder, a prefix of it is
+placed (lines, then sentences, then characters) and the remainder is
+named (`DROPPED: remainder of paragraph 1 after a document-order …
+prefix`). Not a relevance pick.
 
 A box with no GPU: `NGL=0` on **both** servers. The 2B at `:8081`
 still needs `-c 8192` so the **whole** `TAGS-gforth.md` fits. A

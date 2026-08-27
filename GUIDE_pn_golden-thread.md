@@ -265,7 +265,9 @@ Nothing is looked up for you. You type the path or the URL.
 
 A file under `GT_FILE_MAX_BYTES` can still be too big for the face
 window. Paragraphs are kept from the start until `n_ctx` minus last-N,
-the question, and `n_predict`. The cut is named. It is not a relevance
+the question, and `n_predict`. If the first paragraph is itself larger
+than that remainder, a prefix of it is placed (lines, then sentences,
+then characters) and the remainder is named DROPPED. Not a relevance
 pick.
 
 This is the answer to “the model went and got something I did not ask
